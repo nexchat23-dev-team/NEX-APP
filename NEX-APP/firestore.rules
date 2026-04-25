@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // USERS: profile documents (doc id == uid)
+    match /users/{userId} {
+      // Users may read their own profile; public flag allows public reads
+      allow read: if isSignedIn() && (uid() == userId || (resource.data.public == true));
+      // Only the authenticated user may create/update/delete their own profile
+      allow create: if isSignedIn() && uid() == userId;
+      allow update, delete: if isSignedIn() && uid() == userId;
+    }
+
+    // CONVERSATIONS: conversation metadata doc with 'members' and 'admins' arrays
+    // Structure: /conversations/{convId}
+    //   fields: createdBy: string, members: [uid], admins: [uid], type: 'group'|'private'
+    match /conversations/{convId} {
+      // Create: signed-in user that creates the conversation must be included as a member
+      allow create: if isSignedIn()
+                    && uid() == request.resource.data.createdBy
+                    && (uid() in request.resource.data.members);
+
+      // Read: only members can read conversation metadata
+      allow read: if isSignedIn() && (uid() in resource.data.members);
+
+      // Update/delete: restricted to admins listed on the conversation doc
+      allow update, delete: if isSignedIn() && (uid() in resource.data.admins);
+
+      // MEMBERS subcollection: manage membership as individual docs
+      // Path: /conversations/{convId}/members/{memberId}
+      match /members/{memberId} {
+        // Members list is readable by conversation members
+        allow read: if isSignedIn() && (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.members);
+
+        // Create: user may create their own membership (join) OR an admin may add others
+        allow create: if isSignedIn() && (
+          uid() == memberId ||
+          (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.admins)
+        );
+
+        // Update: only admins may change member role info
+        allow update: if isSignedIn() && (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.admins);
+
+        // Delete: a user may delete their own membership (leave) OR an admin may remove members
+        allow delete: if isSignedIn() && (uid() == memberId || uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.admins);
+      }
+
+      // MESSAGES subcollection: store message documents
+      // Path: /conversations/{convId}/messages/{messageId}
+      // Fields expected: senderId, text, timestamp, type
+      match /messages/{messageId} {
+        // Only conversation members can read messages
+        allow read: if isSignedIn() && (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.members);
+
+        // Create: sender must be authenticated and must be a member of the conversation
+        allow create: if isSignedIn()
+                      && uid() == request.resource.data.senderId
+                      && (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.members);
+
+        // Prevent client-side edits/deletes of messages (immutable messages). Adjust if you want limited edits.
+        allow update, delete: if false;
+      }
+    }
+
+    // CALLS: ephemeral signaling documents for audio/video calls
+    // Structure: /calls/{callId}  fields: callerId, participants: [uid], state, startedAt
+    match /calls/{callId} {
+      // Create: caller must be signer and included in participants list
+      allow create: if isSignedIn()
+                    && uid() == request.resource.data.callerId
+                    && (request.resource.data.participants is list)
+                    && (uid() in request.resource.data.participants);
+
+      // Read/Update/Delete: only participants may read or modify call state
+      allow read, update, delete: if isSignedIn() && (uid() in resource.data.participants);
+    }
+
+    // Direct messages (optional alternate layout) — keep simple rules if you use this path
+    match /directMessages/{dmId} {
+      allow create: if isSignedIn() && uid() == request.resource.data.senderId && (uid() == request.resource.data.senderId || uid() == request.resource.data.recipientId);
+      allow read: if isSignedIn() && (uid() == resource.data.senderId || uid() == resource.data.recipientId);
+      allow update, delete: if false;
+    }
+
+    // Deny anything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// Notes / rationale:
+// - This rule set enforces authentication and membership checks for conversation metadata, membership management,
+//   message creation, and call signaling. Memberships are modeled with a members subcollection so that users can
+//   remove themselves (leave) while admins can add/remove others.
+// - WhatsApp reference: WhatsApp maintains server-side group metadata (admins, members) and enforces admin actions;
+//   end-to-end encryption and key management are handled client-side using the Signal Protocol. Firestore rules
+//   cannot provide end-to-end encryption — E2EE must be implemented in the client. See WhatsApp security overview:
+//   https://www.whatsapp.com/security/ and Signal Protocol docs: https://signal.org/docs/ for background.
