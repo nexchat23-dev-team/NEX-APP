@@ -2,15 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // HELPER FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════════════════
     function isSignedIn() {
       return request.auth != null;
     }
     function uid() {
       return request.auth.uid;
     }
+    function isAdmin() {
+      return request.auth.token.email == 'admin@nexchat.com';
+    }
 
-    // USERS: profile documents (doc id == uid)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // USERS COLLECTION - User profiles and token balances
+    // ═══════════════════════════════════════════════════════════════════════════════
     match /users/{userId} {
       // Users may read their own profile; public flag allows public reads
       allow read: if isSignedIn() && (uid() == userId || (resource.data.public == true));
@@ -19,9 +26,27 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && uid() == userId;
     }
 
-    // CONVERSATIONS: conversation metadata doc with 'members' and 'admins' arrays
-    // Structure: /conversations/{convId}
-    //   fields: createdBy: string, members: [uid], admins: [uid], type: 'group'|'private'
+    // TOKEN BALANCES - User token holdings
+    // Structure: /tokenBalances/{userId} - fields: balance, transactions[]
+    match /tokenBalances/{userId} {
+      allow read: if isSignedIn() && uid() == userId;
+      allow create: if isSignedIn() && uid() == userId;
+      allow update: if isSignedIn() && uid() == userId;
+      allow delete: if false; // Balances cannot be deleted
+    }
+
+    // MARKETPLACE ORDERS - Token purchases
+    // Structure: /orders/{orderId} - fields: userId, packType, amount, status, createdAt
+    match /orders/{orderId} {
+      allow create: if isSignedIn() && uid() == request.resource.data.userId;
+      allow read: if isSignedIn() && (uid() == resource.data.userId || isAdmin());
+      allow update: if isSignedIn() && (uid() == resource.data.userId || isAdmin());
+      allow delete: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // CONVERSATIONS - Chat and Group Chat
+    // ═══════════════════════════════════════════════════════════════════════════════
     match /conversations/{convId} {
       // Create: signed-in user that creates the conversation must be included as a member
       allow create: if isSignedIn()
@@ -34,63 +59,170 @@ service cloud.firestore {
       // Update/delete: restricted to admins listed on the conversation doc
       allow update, delete: if isSignedIn() && (uid() in resource.data.admins);
 
-      // MEMBERS subcollection: manage membership as individual docs
-      // Path: /conversations/{convId}/members/{memberId}
+      // MEMBERS subcollection
       match /members/{memberId} {
-        // Members list is readable by conversation members
         allow read: if isSignedIn() && (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.members);
-
-        // Create: user may create their own membership (join) OR an admin may add others
-        allow create: if isSignedIn() && (
-          uid() == memberId ||
-          (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.admins)
-        );
-
-        // Update: only admins may change member role info
+        allow create: if isSignedIn() && (uid() == memberId || uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.admins);
         allow update: if isSignedIn() && (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.admins);
-
-        // Delete: a user may delete their own membership (leave) OR an admin may remove members
         allow delete: if isSignedIn() && (uid() == memberId || uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.admins);
       }
 
-      // MESSAGES subcollection: store message documents
-      // Path: /conversations/{convId}/messages/{messageId}
-      // Fields expected: senderId, text, timestamp, type
+      // MESSAGES subcollection
       match /messages/{messageId} {
-        // Only conversation members can read messages
         allow read: if isSignedIn() && (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.members);
-
-        // Create: sender must be authenticated and must be a member of the conversation
         allow create: if isSignedIn()
                       && uid() == request.resource.data.senderId
                       && (uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.members);
-
-        // Prevent client-side edits/deletes of messages (immutable messages). Adjust if you want limited edits.
-        allow update, delete: if false;
+        allow update, delete: if false; // Immutable messages
       }
     }
 
-    // CALLS: ephemeral signaling documents for audio/video calls
-    // Structure: /calls/{callId}  fields: callerId, participants: [uid], state, startedAt
-    match /calls/{callId} {
-      // Create: caller must be signer and included in participants list
-      allow create: if isSignedIn()
-                    && uid() == request.resource.data.callerId
-                    && (request.resource.data.participants is list)
-                    && (uid() in request.resource.data.participants);
-
-      // Read/Update/Delete: only participants may read or modify call state
-      allow read, update, delete: if isSignedIn() && (uid() in resource.data.participants);
-    }
-
-    // Direct messages (optional alternate layout) — keep simple rules if you use this path
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // DIRECT MESSAGES - User to user chat
+    // ═══════════════════════════════════════════════════════════════════════════════
     match /directMessages/{dmId} {
-      allow create: if isSignedIn() && uid() == request.resource.data.senderId && (uid() == request.resource.data.senderId || uid() == request.resource.data.recipientId);
+      allow create: if isSignedIn() && uid() == request.resource.data.senderId 
+                    && (uid() == request.resource.data.recipientId || uid() == request.resource.data.senderId);
       allow read: if isSignedIn() && (uid() == resource.data.senderId || uid() == resource.data.recipientId);
       allow update, delete: if false;
     }
 
-    // Deny anything else by default
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // STATUS UPDATES - WhatsApp-style status stories
+    // ═══════════════════════════════════════════════════════════════════════════════
+    match /statusUpdates/{statusId} {
+      allow create: if isSignedIn() && uid() == request.resource.data.userId;
+      allow read: if isSignedIn() && (
+        uid() == resource.data.userId || 
+        uid() in resource.data.visibleTo[]
+      );
+      allow delete: if isSignedIn() && uid() == resource.data.userId;
+      allow update: if false; // Status updates are immutable
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // CALLS - Audio/Video call signaling
+    // ═══════════════════════════════════════════════════════════════════════════════
+    match /calls/{callId} {
+      allow create: if isSignedIn()
+                    && uid() == request.resource.data.callerId
+                    && (request.resource.data.participants is list)
+                    && (uid() in request.resource.data.participants);
+      allow read, update, delete: if isSignedIn() && (uid() in resource.data.participants);
+    }
+
+    // CALL HISTORY - Record of past calls
+    // Structure: /callHistory/{recordId} - fields: callerId, receiverId, type, duration, timestamp
+    match /callHistory/{recordId} {
+      allow create: if isSignedIn() && uid() == request.resource.data.callerId;
+      allow read: if isSignedIn() && (uid() == resource.data.callerId || uid() == resource.data.receiverId);
+      allow delete: if isSignedIn() && uid() == resource.data.callerId;
+      allow update: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // ANNOUNCEMENTS - Admin broadcasts (NEW)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    match /announcements/{announcementId} {
+      // Anyone signed in can read announcements
+      allow read: if isSignedIn();
+      // Only admins can create/update/delete
+      allow create, update, delete: if isSignedIn() && isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // ADVERTISEMENTS - Promos, sales, events (NEW)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    match /advertisements/{adId} {
+      // Anyone signed in can read ads
+      allow read: if isSignedIn();
+      // Only admins can manage advertisements
+      allow create, update, delete: if isSignedIn() && isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // GAMING HUB - Games, clans, squads, clips (NEW)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    // Game scores/leaderboard
+    match /gameScores/{gameId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && uid() == request.resource.data.userId;
+      allow update: if isSignedIn() && (uid() == resource.data.userId || isAdmin());
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    // Clans/teams
+    match /clans/{clanId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (uid() in resource.data.adminIds[]);
+      allow delete: if isSignedIn() && isAdmin();
+      
+      match /members/{memberId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && uid() == memberId;
+        allow delete: if isSignedIn() && (uid() in get(/databases/$(database)/documents/clans/$(clanId)).data.adminIds[]);
+      }
+    }
+
+    // Gaming squads
+    match /squads/{squadId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && uid() == request.resource.data.leaderId;
+      allow update, delete: if isSignedIn() && uid() == resource.data.leaderId;
+      
+      match /members/{memberId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && uid() == memberId;
+        allow delete: if isSignedIn() && (uid() == memberId || uid() == get(/databases/$(database)/documents/squads/$(squadId)).data.leaderId);
+      }
+    }
+
+    // Game clips/videos
+    match /gameClips/{clipId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && uid() == request.resource.data.userId;
+      allow update: if isSignedIn() && uid() == resource.data.userId;
+      allow delete: if isSignedIn() && (uid() == resource.data.userId || isAdmin());
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // AI CHAT - Conversation history with NEX AI (NEW)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    match /aiConversations/{conversationId} {
+      allow read: if isSignedIn() && uid() == resource.data.userId;
+      allow create: if isSignedIn() && uid() == request.resource.data.userId;
+      allow update: if isSignedIn() && uid() == resource.data.userId;
+      allow delete: if isSignedIn() && uid() == resource.data.userId;
+      
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && uid() == get(/databases/$(database)/documents/aiConversations/$(conversationId)).data.userId;
+        allow create: if isSignedIn() && uid() == get(/databases/$(database)/documents/aiConversations/$(conversationId)).data.userId;
+        allow read, write: if isSignedIn() && uid() == get(/databases/$(database)/documents/aiConversations/$(conversationId)).data.userId;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // BETTING/GAMES - Game sessions and transactions (NEW)
+    // ═══════════════════════════════════════════════════════════════════════════════
+    match /gameSessions/{sessionId} {
+      allow create: if isSignedIn() && uid() == request.resource.data.userId;
+      allow read: if isSignedIn() && (uid() == resource.data.userId || isAdmin());
+      allow update: if isSignedIn() && isAdmin(); // Only admins can settle games
+      allow delete: if false;
+    }
+
+    // Betting history
+    match /bettingHistory/{betId} {
+      allow create: if isSignedIn() && uid() == request.resource.data.userId;
+      allow read: if isSignedIn() && (uid() == resource.data.userId || isAdmin());
+      allow delete: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // DEFAULT DENY - Secure everything else
+    // ═══════════════════════════════════════════════════════════════════════════════
     match /{document=**} {
       allow read, write: if false;
     }

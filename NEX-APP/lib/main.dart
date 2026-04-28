@@ -9,6 +9,15 @@ import 'screens/login_screen.dart';
 import 'screens/marketplace_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/settings_screen.dart';
+import 'screens/group_chat_screen.dart';
+import 'screens/calls_screen.dart';
+import 'screens/announcements_screen.dart';
+import 'screens/ai_chat_screen.dart';
+import 'screens/terminal_screen.dart';
+import 'screens/gaming_hub_screen.dart';
+import 'screens/advertisement_screen.dart';
+import 'screens/permission_screen.dart';
 import 'services/auth_service.dart';
 
 const kNeonGreen = Color(0xFF25D366);
@@ -104,6 +113,15 @@ class NexApp extends StatelessWidget {
           BetScreen.routeName: (_) => const BetScreen(),
           MarketplaceScreen.routeName: (_) => const MarketplaceScreen(),
           ProfileScreen.routeName: (_) => const ProfileScreen(),
+          SettingsScreen.routeName: (_) => const SettingsScreen(),
+          GroupChatScreen.routeName: (_) => const GroupChatScreen(),
+          CallsScreen.routeName: (_) => const CallsScreen(),
+          AnnouncementsScreen.routeName: (_) => const AnnouncementsScreen(),
+          AIChatScreen.routeName: (_) => const AIChatScreen(),
+          TerminalScreen.routeName: (_) => const TerminalScreen(),
+          GamingHubScreen.routeName: (_) => const GamingHubScreen(),
+          AdvertisementScreen.routeName: (_) => const AdvertisementScreen(),
+          PermissionScreen.routeName: (_) => const PermissionScreen(),
         },
       ),
     );

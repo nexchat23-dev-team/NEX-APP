@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../providers/token_provider.dart';
+import '../main.dart';
+import '../main.dart';
 
 class ProfileScreen extends StatelessWidget {
   static const routeName = '/profile';
@@ -15,10 +17,17 @@ class ProfileScreen extends StatelessWidget {
     final bonusAvailable = !tokenProvider.dailyBonusClaimed;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1410),
+      backgroundColor: kDarkBackground,
       appBar: AppBar(
         title: const Text('Profile'),
+        backgroundColor: kPrimaryBlue,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () => _showEditProfileDialog(context, authService),
+            icon: const Icon(Icons.edit),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -158,6 +167,71 @@ class ProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(label, style: const TextStyle(color: Colors.white70)),
+    );
+  }
+
+  void _showEditProfileDialog(BuildContext context, AuthService authService) {
+    final nameController = TextEditingController(text: authService.user?.email ?? 'Guest');
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: kSurfaceColor,
+        title: const Text('Edit Profile', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: kNeonGreen.withOpacity(0.2),
+              child: const Icon(Icons.person, color: kNeonGreen, size: 40),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: nameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Display Name',
+                labelStyle: const TextStyle(color: Colors.white70),
+                filled: true,
+                fillColor: kDarkBackground,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Bio',
+                labelStyle: const TextStyle(color: Colors.white70),
+                hintText: 'Tell us about yourself',
+                hintStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: kDarkBackground,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Profile updated!'),
+                  backgroundColor: kNeonGreen,
+                ),
+              );
+            },
+            child: const Text('Save', style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
     );
   }
 }

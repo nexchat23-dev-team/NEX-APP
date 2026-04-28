@@ -1,0 +1,344 @@
+// ==================================================================
+// NEX-APP FIREBASE FIRESTORE SECURITY RULES
+// ==================================================================
+// These rules secure: Authentication, Chat, Group Chat, Calls,
+// Profile, Tokens, Marketplace, Betting, Settings
+// ==================================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -----------------------------------------------------------
+    // HELPER FUNCTIONS
+    // -----------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function uid() {
+      return request.auth.uid;
+    }
+    function isOwner(userId) {
+      return isSignedIn() && uid() == userId;
+    }
+    function isGroupAdmin(convId) {
+      return isSignedIn() && uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.admins;
+    }
+    function isGroupMember(convId) {
+      return isSignedIn() && uid() in get(/databases/$(database)/documents/conversations/$(convId)).data.members;
+    }
+
+
+    // ==================================================================
+    // USERS COLLECTION
+    // ==================================================================
+    // Stores: email, displayName, avatar, bio, tokens, createdAt
+    match /users/{userId} {
+      // Anyone can read public profiles
+      allow read: if isSignedIn() && (
+        resource.data.public == true ||
+        uid() == userId
+      );
+      // Users can only create their own profile
+      allow create: if isSignedIn() && uid() == userId;
+      // Users can only update their own profile
+      allow update: if isSignedIn() && uid() == userId;
+      // Users can only delete their own profile
+      allow delete: if isSignedIn() && uid() == userId;
+    }
+
+
+    // ==================================================================
+    // CONVERSATIONS COLLECTION (1:1 & Group Chats)
+    // ==================================================================
+    match /conversations/{convId} {
+      // Create: user must be creator and member
+      allow create: if isSignedIn()
+                    && uid() == request.resource.data.createdBy
+                    && uid() in request.resource.data.members;
+
+      // Read: only members can read conversation
+      allow read: if isSignedIn() && uid() in resource.data.members;
+
+      // Update: only admins can update group info
+      allow update: if isSignedIn() && uid() in resource.data.admins;
+
+      // Delete: only admins can delete group
+      allow delete: if isSignedIn() && uid() in resource.data.admins;
+
+
+      // -----------------------------------------------------------
+      // MEMBERS SUBCOLLECTION (Group Management)
+      // -----------------------------------------------------------
+      match /members/{memberId} {
+        // Read: conversation members can see member list
+        allow read: if isSignedIn() && isGroupMember(convId);
+
+        // Create: user can join themselves OR admin can add
+        allow create: if isSignedIn() && (
+          uid() == memberId ||
+          isGroupAdmin(convId)
+        );
+
+        // Update: only admins can change member roles
+        allow update: if isSignedIn() && isGroupAdmin(convId);
+
+        // Delete: user can leave (delete self) OR admin can remove
+        allow delete: if isSignedIn() && (
+          uid() == memberId ||
+          isGroupAdmin(convId)
+        );
+      }
+
+
+      // -----------------------------------------------------------
+      // MESSAGES SUBCOLLECTION (Chat Messages)
+      // -----------------------------------------------------------
+      match /messages/{messageId} {
+        // Read: only conversation members
+        allow read: if isSignedIn() && isGroupMember(convId);
+
+        // Create: sender must be member and match senderId
+        allow create: if isSignedIn()
+                      && isGroupMember(convId)
+                      && uid() == request.resource.data.senderId;
+
+        // Update/Delete: only sender can modify their own messages
+        allow update, delete: if isSignedIn() && (
+          uid() == resource.data.senderId ||
+          isGroupAdmin(convId)
+        );
+      }
+    }
+
+
+    // ==================================================================
+    // DIRECT MESSAGES (1:1 Chat)
+    // ==================================================================
+    match /directMessages/{dmId} {
+      // Create: sender must be authenticated and match senderId
+      allow create: if isSignedIn()
+                    && uid() == request.resource.data.senderId;
+
+      // Read: only participants can read
+      allow read: if isSignedIn() && (
+        uid() == resource.data.senderId ||
+        uid() == resource.data.recipientId
+      );
+
+      // Update/Delete: only sender can modify
+      allow update, delete: if isSignedIn() && uid() == resource.data.senderId;
+    }
+
+
+    // ==================================================================
+    // CALLS COLLECTION (Voice & Video Calls)
+    // ==================================================================
+    match /calls/{callId} {
+      // Create: caller must be signed in and in participants
+      allow create: if isSignedIn()
+                    && uid() == request.resource.data.callerId
+                    && uid() in request.resource.data.participants;
+
+      // Read/Update: only participants can see/modify call
+      allow read, update: if isSignedIn() && uid() in resource.data.participants;
+
+      // Delete: caller or any participant can end call
+      allow delete: if isSignedIn() && (
+        uid() == resource.data.callerId ||
+        uid() in resource.data.participants
+      );
+    }
+
+
+    // ==================================================================
+    // TOKENS COLLECTION (Token Balance & Transactions)
+    // ==================================================================
+    match /tokens/{userId} {
+      // Read: only the token owner
+      allow read: if isSignedIn() && uid() == userId;
+
+      // Create: user can initialize their token account
+      allow create: if isSignedIn() && uid() == userId;
+
+      // Update: user can add tokens (via marketplace/promo)
+      // Admin can deduct (via betting/ purchases)
+      allow update: if isSignedIn() && (
+        uid() == userId ||
+        request.auth.token.admin == true
+      );
+
+      // Delete: not allowed (tokens are permanent)
+      allow delete: if false;
+    }
+
+
+    // ==================================================================
+    // MARKETPLACE COLLECTION (Token Packages)
+    // ==================================================================
+    match /packages/{packageId} {
+      // Anyone can read available packages
+      allow read: if isSignedIn();
+
+      // Only admins can create/update packages
+      allow create, update: if isSignedIn() && request.auth.token.admin == true;
+
+      // No delete for packages (keep history)
+      allow delete: if false;
+    }
+
+
+    // ==================================================================
+    // PROMOS COLLECTION (Promo Codes)
+    // ==================================================================
+    match /promos/{promoId} {
+      // Read: authenticated users can view promos
+      allow read: if isSignedIn();
+
+      // Create/Update: only admins
+      allow create, update: if isSignedIn() && request.auth.token.admin == true;
+
+      // Use promo: user can claim if not already used
+      allow update: if isSignedIn() && (
+        !resource.data.usedBy.contains(uid()) ||
+        resource.data.maxUses > resource.data.usedBy.size()
+      );
+    }
+
+
+    // ==================================================================
+    // BETTING COLLECTION (Game History)
+    // ==================================================================
+    match /bets/{betId} {
+      // Read: only the bettor
+      allow read: if isSignedIn() && uid() == resource.data.userId;
+
+      // Create: user can place bets
+      allow create: if isSignedIn()
+                    && uid() == request.resource.data.userId
+                    && request.resource.data.amount > 0;
+
+      // Read game results: anyone in the game
+      allow read: if isSignedIn() && (
+        uid() == resource.data.userId ||
+        uid() in resource.data.participants
+      );
+
+      // Update: system-only (game results)
+      allow update: if request.auth.token.system == true;
+    }
+
+
+    // ==================================================================
+    // ACHIEVEMENTS COLLECTION (User Achievements)
+    // ==================================================================
+    match /achievements/{userId} {
+      // Read: only the user
+      allow read: if isSignedIn() && uid() == userId;
+
+      // Create: system awards achievements
+      allow create: if request.auth.token.system == true;
+
+      // Update: user can update progress
+      allow update: if isSignedIn() && uid() == userId;
+    }
+
+
+    // ==================================================================
+    // SETTINGS COLLECTION (User Preferences)
+    // ==================================================================
+    match /settings/{userId} {
+      // Read: only the user
+      allow read: if isSignedIn() && uid() == userId;
+
+      // Create/Update: only the user
+      allow create, update: if isSignedIn() && uid() == userId;
+
+      // Delete: user can reset settings
+      allow delete: if isSignedIn() && uid() == userId;
+    }
+
+
+    // ==================================================================
+    // STATUS COLLECTION (User Status/Online)
+    // ==================================================================
+    match /status/{userId} {
+      // Read: authenticated users
+      allow read: if isSignedIn();
+
+      // Update: only the user or system
+      allow update: if isSignedIn() && (
+        uid() == userId ||
+        request.auth.token.system == true
+      );
+    }
+
+
+    // ==================================================================
+    // DEFAULT DENY (Security)
+    // ==================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+  }
+}
+
+
+// ==================================================================
+// RULES EXPLANATION
+// ==================================================================
+/*
+USERS:
+- Users can read/write their own profile
+- Public profiles readable by all authenticated users
+
+CONVERSATIONS (Group & 1:1):
+- Only members can read group metadata
+- Only admins can update group settings
+- Members can leave, admins can remove others
+
+MESSAGES:
+- Only group members can read messages
+- Only members can send messages
+- Sender can delete their own messages
+
+DIRECT MESSAGES:
+- Only sender/recipient can read
+- Sender can delete their own messages
+
+CALLS:
+- Only call participants can see/modify call state
+- Caller and participants can end calls
+
+TOKENS:
+- Only owner can read their balance
+- User can add tokens, admin can deduct
+
+MARKETPLACE:
+- All authenticated users can read packages
+- Only admins can modify packages
+
+PROMOS:
+- Users can claim unused promos
+- Admins can create/modify promos
+
+BETTING:
+- Users can place bets on games
+- System updates game results
+- Users can view their bet history
+
+ACHIEVEMENTS:
+- System awards achievements
+- Users can track progress
+
+SETTINGS:
+- Only user can read/write their settings
+
+STATUS:
+- Users can update their own status
+- System can update for presence
+
+DEFAULT:
+- All other paths denied for security
+*/

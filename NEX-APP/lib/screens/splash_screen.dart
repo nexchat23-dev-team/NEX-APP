@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
+import 'permission_screen.dart';
 import '../services/auth_service.dart';
 
 // Constants for better maintainability
@@ -60,9 +62,18 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     final authService = Provider.of<AuthService>(context, listen: false);
-    final routeName = authService.isLoggedIn
-        ? HomeScreen.routeName
-        : LoginScreen.routeName;
+    final prefs = await SharedPreferences.getInstance();
+    final isFirstTime = prefs.getBool(PermissionScreen.firstTimeKey) ?? true;
+    
+    // If logged in and first time, go to permissions
+    // If logged in and not first time, go to home
+    // If not logged in, go to login
+    String routeName;
+    if (authService.isLoggedIn) {
+      routeName = isFirstTime ? PermissionScreen.routeName : HomeScreen.routeName;
+    } else {
+      routeName = LoginScreen.routeName;
+    }
 
     Navigator.pushReplacementNamed(context, routeName);
   }

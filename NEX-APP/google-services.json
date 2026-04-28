@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "327330605104",
+    "firebase_url": "https://nexchat-47326-default-rtdb.firebaseio.com",
+    "project_id": "nexchat-47326",
+    "storage_bucket": "nexchat-47326.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:327330605104:android:ca35cc55624a0e651065f5",
+        "android_client_info": {
+          "package_name": "nexotech.nexapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "327330605104-e14lu4dkc0j11i4tf138qcrsej2i1ous.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAoE3QKqT_H9SJ_sYes0wfZdlKG82qRfIk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "327330605104-e14lu4dkc0j11i4tf138qcrsej2i1ous.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
