@@ -71,7 +71,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: kNeonPurple.withOpacity(0.2),
+                color: kNeonPurple.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.group_add, color: kNeonPurple),
@@ -87,7 +87,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF121224),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: kNeonPurple.withOpacity(0.3)),
+                border: Border.all(color: kNeonPurple.withValues(alpha: 0.3)),
               ),
               child: TextField(
                 controller: _groupNameController,
@@ -106,7 +106,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: kNeonPurple.withOpacity(0.1),
+                color: kNeonPurple.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Row(
@@ -132,7 +132,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           ),
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [kNeonPurple, kNeonPurple.withOpacity(0.8)]),
+              gradient: LinearGradient(colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.8)]),
               borderRadius: BorderRadius.circular(12),
             ),
             child: ElevatedButton(
@@ -161,7 +161,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     setState(() => _isCreating = true);
 
     try {
-      final currentUserId = _chatService.currentUserId ?? 'demo-user';
+      final currentUserId = _chatService.currentUserId;
+      if (currentUserId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You must be logged in to create a group')),
+        );
+        setState(() => _isCreating = false);
+        return;
+      }
       _conversationId = await _chatService.createConversation(
         participantIds: [currentUserId],
         groupName: name,
@@ -265,7 +272,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: kNeonPurple.withOpacity(0.5),
+                  color: kNeonPurple.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -277,14 +284,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [kNeonPurple, kNeonPurple.withOpacity(0.6)],
+                      colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.6)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: kNeonPurple.withOpacity(0.3),
+                        color: kNeonPurple.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -300,7 +307,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       Text(_groupName, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                       Row(
                         children: [
-                          Icon(Icons.people, color: kNeonPurple.withOpacity(0.7), size: 14),
+                          Icon(Icons.people, color: kNeonPurple.withValues(alpha: 0.7), size: 14),
                           const SizedBox(width: 4),
                           Text('${_members.length} members', style: const TextStyle(color: kNeonPurple, fontSize: 12)),
                         ],
@@ -314,7 +321,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: kNeonPurple.withOpacity(0.3))),
+                border: Border(bottom: BorderSide(color: kNeonPurple.withValues(alpha: 0.3))),
               ),
               child: const Text('Members', style: TextStyle(color: kNeonPurple, fontWeight: FontWeight.bold, fontSize: 16)),
             ),
@@ -325,13 +332,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF121224),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
               child: Row(
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: kNeonPurple.withOpacity(0.2),
+                    backgroundColor: kNeonPurple.withValues(alpha: 0.2),
                     child: Text(_members[index][0].toUpperCase(), style: const TextStyle(color: kNeonPurple, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(width: 12),
@@ -367,11 +374,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 width: double.infinity,
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [kNeonPurple, kNeonPurple.withOpacity(0.8)]),
+                    gradient: LinearGradient(colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.8)]),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: kNeonPurple.withOpacity(0.3),
+                        color: kNeonPurple.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -415,14 +422,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [kNeonPurple, kNeonPurple.withOpacity(0.6)],
+                  colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: kNeonPurple.withOpacity(0.4),
+                    color: kNeonPurple.withValues(alpha: 0.4),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -437,7 +444,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 Text(_groupName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 Row(
                   children: [
-                    Icon(Icons.people, color: kNeonPurple.withOpacity(0.7), size: 14),
+                    Icon(Icons.people, color: kNeonPurple.withValues(alpha: 0.7), size: 14),
                     const SizedBox(width: 4),
                     Text('${_members.length} members', style: const TextStyle(color: kNeonPurple, fontSize: 12, fontWeight: FontWeight.w500)),
                   ],
@@ -450,7 +457,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           Container(
             margin: const EdgeInsets.only(right: 4),
             decoration: BoxDecoration(
-              color: kNeonPurple.withOpacity(0.15),
+              color: kNeonPurple.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(onPressed: () {}, icon: const Icon(Icons.call, color: kNeonPurple)),
@@ -458,14 +465,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           Container(
             margin: const EdgeInsets.only(right: 4),
             decoration: BoxDecoration(
-              color: kNeonPurple.withOpacity(0.15),
+              color: kNeonPurple.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(onPressed: () {}, icon: const Icon(Icons.videocam, color: kNeonPurple)),
           ),
           Container(
             decoration: BoxDecoration(
-              color: kNeonPurple.withOpacity(0.15),
+              color: kNeonPurple.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(onPressed: _showGroupInfoDialog, icon: const Icon(Icons.info_outline, color: kNeonPurple)),
@@ -477,7 +484,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: kNeonPurple.withOpacity(0.1),
+                  color: kNeonPurple.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const CircularProgressIndicator(color: kNeonPurple),
@@ -508,7 +515,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: kNeonPurple.withOpacity(0.1),
+                color: kNeonPurple.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const CircularProgressIndicator(color: kNeonPurple),
@@ -554,7 +561,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           // NEON PURPLE gradient for user messages
           gradient: isMine
               ? LinearGradient(
-                  colors: [kNeonPurple, kNeonPurple.withOpacity(0.7)],
+                  colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.7)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
@@ -567,12 +574,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             bottomRight: Radius.circular(isMine ? 4 : 20),
           ),
           border: isMine
-              ? Border.all(color: kNeonPurple.withOpacity(0.5), width: 1.5)
-              : Border.all(color: Colors.white.withOpacity(0.1)),
+              ? Border.all(color: kNeonPurple.withValues(alpha: 0.5), width: 1.5)
+              : Border.all(color: Colors.white.withValues(alpha: 0.1)),
           boxShadow: isMine
               ? [
                   BoxShadow(
-                    color: kNeonPurple.withOpacity(0.3),
+                    color: kNeonPurple.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -595,8 +602,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isMine)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 4),
                     child: Icon(Icons.done_all, size: 14, color: Colors.white70),
                   ),
                 Text(
@@ -620,11 +627,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF121224),
         border: Border(
-          top: BorderSide(color: kNeonPurple.withOpacity(0.3), width: 1),
+          top: BorderSide(color: kNeonPurple.withValues(alpha: 0.3), width: 1),
         ),
         boxShadow: [
           BoxShadow(
-            color: kNeonPurple.withOpacity(0.1),
+            color: kNeonPurple.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -634,7 +641,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: kNeonPurple.withOpacity(0.1),
+              color: kNeonPurple.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
@@ -646,13 +653,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [const Color(0xFF1A1A2E), const Color(0xFF1E1E3A)],
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1A1A2E), Color(0xFF1E1E3A)],
                   begin: Alignment.topLeft,
                   end: Alignment.topRight,
                 ),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: kNeonPurple.withOpacity(0.3)),
+                border: Border.all(color: kNeonPurple.withValues(alpha: 0.3)),
               ),
               child: TextField(
                 controller: messageController,
@@ -671,14 +678,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [kNeonPurple, kNeonPurple.withOpacity(0.8)],
+                colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.8)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(25),
               boxShadow: [
                 BoxShadow(
-                  color: kNeonPurple.withOpacity(0.5),
+                  color: kNeonPurple.withValues(alpha: 0.5),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),

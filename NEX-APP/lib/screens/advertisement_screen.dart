@@ -65,14 +65,14 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [kNeonBlue, kNeonBlue.withOpacity(0.6)],
+                  colors: [kNeonBlue, kNeonBlue.withValues(alpha: 0.6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: kNeonBlue.withOpacity(0.4),
+                    color: kNeonBlue.withValues(alpha: 0.4),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -87,7 +87,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
         leading: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: kNeonBlue.withOpacity(0.15),
+            color: kNeonBlue.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
           child: IconButton(
@@ -99,7 +99,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
           Container(
             margin: const EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              color: kNeonBlue.withOpacity(0.15),
+              color: kNeonBlue.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(
@@ -131,12 +131,12 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            adColor.withOpacity(0.15),
-            adColor.withOpacity(0.05),
+            adColor.withValues(alpha: 0.15),
+            adColor.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: adColor.withOpacity(0.3)),
+        border: Border.all(color: adColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,7 +146,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: adColor.withOpacity(0.2)),
+                bottom: BorderSide(color: adColor.withValues(alpha: 0.2)),
               ),
             ),
             child: Row(
@@ -154,7 +154,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: adColor.withOpacity(0.2),
+                    color: adColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(adIcon, color: adColor, size: 24),
@@ -176,7 +176,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: adColor.withOpacity(0.2),
+                          color: adColor.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -195,7 +195,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.2),
+                      color: Colors.red.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -354,7 +354,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: kNeonBlue.withOpacity(0.5),
+                  color: kNeonBlue.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -365,7 +365,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: kNeonBlue.withOpacity(0.2),
+                    color: kNeonBlue.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.filter_list, color: kNeonBlue),
@@ -397,10 +397,10 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: selected ? kNeonBlue.withOpacity(0.15) : Colors.transparent,
+        color: selected ? kNeonBlue.withValues(alpha: 0.15) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: selected ? kNeonBlue : Colors.white.withOpacity(0.1),
+          color: selected ? kNeonBlue : Colors.white.withValues(alpha: 0.1),
         ),
       ),
       child: ListTile(
@@ -416,7 +416,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
             ? Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: kNeonBlue.withOpacity(0.2),
+                  color: kNeonBlue.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.check, color: kNeonBlue, size: 18),
@@ -438,7 +438,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: kNeonBlue.withOpacity(0.2),
+                color: kNeonBlue.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.person_add, color: kNeonBlue),
@@ -447,27 +447,27 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
             const Text('Invite Friends', style: TextStyle(color: Colors.white)),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            const Text(
               'Share your referral link and earn 200 tokens for each friend who joins!',
               style: TextStyle(color: Colors.white70),
             ),
-            SizedBox(height: 16),
-            Text(
+            const SizedBox(height: 16),
+            const Text(
               'Referral Link:',
               style: TextStyle(color: Colors.white54, fontSize: 12),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Container(
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFF0A1628),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: kNeonBlue.withOpacity(0.3)),
+                border: Border.all(color: kNeonBlue.withValues(alpha: 0.3)),
               ),
-              child: Text(
+              child: const Text(
                 'https://nexchat.com/ref/user123',
                 style: TextStyle(color: kNeonBlue, fontFamily: 'monospace'),
               ),
@@ -481,11 +481,11 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
           ),
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [kNeonBlue, kNeonBlue.withOpacity(0.8)]),
+              gradient: LinearGradient(colors: [kNeonBlue, kNeonBlue.withValues(alpha: 0.8)]),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: kNeonBlue.withOpacity(0.4),
+                  color: kNeonBlue.withValues(alpha: 0.4),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -499,8 +499,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
               onPressed: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Link copied to clipboard!'),
+                  const SnackBar(
+                    content: Text('Link copied to clipboard!'),
                     backgroundColor: kNeonBlue,
                   ),
                 );

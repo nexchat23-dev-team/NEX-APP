@@ -21,7 +21,7 @@ class TokenBalanceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white12),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.28), blurRadius: 18, offset: const Offset(0, 10)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 10)),
         ],
       ),
       child: Row(
@@ -29,7 +29,7 @@ class TokenBalanceCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFF00FF66).withOpacity(0.18),
+              color: const Color(0xFF00FF66).withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(Icons.star, size: 42, color: Color(0xFF00FF66)),

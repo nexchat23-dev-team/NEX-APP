@@ -95,12 +95,12 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                kNeonPurple.withOpacity(0.2),
-                kNeonBlue.withOpacity(0.1),
+                kNeonPurple.withValues(alpha: 0.2),
+                kNeonBlue.withValues(alpha: 0.1),
               ],
             ),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: kNeonPurple.withOpacity(0.3)),
+            border: Border.all(color: kNeonPurple.withValues(alpha: 0.3)),
           ),
           child: Material(
             color: Colors.transparent,
@@ -134,7 +134,7 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: kNeonGreen.withOpacity(0.2),
+                        color: kNeonGreen.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -171,15 +171,15 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
           child: Row(
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: kNeonPurple.withOpacity(0.2),
+                backgroundColor: kNeonPurple.withValues(alpha: 0.2),
                 child: Text(
                   gamer['avatar'] as String,
                   style: const TextStyle(
@@ -208,7 +208,7 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: _getRankColor(gamer['rank'] as String).withOpacity(0.2),
+                            color: _getRankColor(gamer['rank'] as String).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -260,12 +260,12 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                kNeonGreen.withOpacity(0.1),
+                kNeonGreen.withValues(alpha: 0.1),
                 Colors.transparent,
               ],
             ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: kNeonGreen.withOpacity(0.3)),
+            border: Border.all(color: kNeonGreen.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
@@ -273,7 +273,7 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: kNeonGreen.withOpacity(0.2),
+                  color: kNeonGreen.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
@@ -339,16 +339,16 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: kNeonBlue.withOpacity(0.1),
+            color: kNeonBlue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: kNeonBlue.withOpacity(0.3)),
+            border: Border.all(color: kNeonBlue.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: kNeonBlue.withOpacity(0.2),
+                  color: kNeonBlue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.group, color: kNeonBlue),
@@ -369,14 +369,14 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.videogame_asset, color: Colors.white54, size: 14),
+                        const Icon(Icons.videogame_asset, color: Colors.white54, size: 14),
                         const SizedBox(width: 4),
                         Text(
                           squad['game'] as String,
                           style: const TextStyle(color: Colors.white54, fontSize: 12),
                         ),
                         const SizedBox(width: 12),
-                        Icon(Icons.people, color: Colors.white54, size: 14),
+                        const Icon(Icons.people, color: Colors.white54, size: 14),
                         const SizedBox(width: 4),
                         Text(
                           squad['members'] as String,
@@ -393,7 +393,7 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: kNeonGreen.withOpacity(0.2),
+                      color: kNeonGreen.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -435,7 +435,7 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -447,8 +447,8 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      kNeonPurple.withOpacity(0.3),
-                      kNeonBlue.withOpacity(0.2),
+                      kNeonPurple.withValues(alpha: 0.3),
+                      kNeonBlue.withValues(alpha: 0.2),
                     ],
                   ),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -456,7 +456,7 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.black54,
                       shape: BoxShape.circle,
                     ),
@@ -482,7 +482,7 @@ class _GamingHubScreenState extends State<GamingHubScreen> with SingleTickerProv
                       children: [
                         CircleAvatar(
                           radius: 12,
-                          backgroundColor: kNeonPurple.withOpacity(0.2),
+                          backgroundColor: kNeonPurple.withValues(alpha: 0.2),
                           child: Text(
                             (clip['author'] as String)[0],
                             style: const TextStyle(color: kNeonPurple, fontSize: 10),

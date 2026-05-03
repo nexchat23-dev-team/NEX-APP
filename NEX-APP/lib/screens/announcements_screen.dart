@@ -44,14 +44,14 @@ class AnnouncementsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [kNeonBlue, kNeonBlue.withOpacity(0.6)],
+                  colors: [kNeonBlue, kNeonBlue.withValues(alpha: 0.6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: kNeonBlue.withOpacity(0.4),
+                    color: kNeonBlue.withValues(alpha: 0.4),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -66,7 +66,7 @@ class AnnouncementsScreen extends StatelessWidget {
         leading: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: kNeonBlue.withOpacity(0.15),
+            color: kNeonBlue.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
           child: IconButton(
@@ -89,18 +89,18 @@ class AnnouncementsScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: isPinned
-                    ? [kNeonBlue.withOpacity(0.15), kNeonBlue.withOpacity(0.05)]
+                    ? [kNeonBlue.withValues(alpha: 0.15), kNeonBlue.withValues(alpha: 0.05)]
                     : [const Color(0xFF0D1E36), const Color(0xFF0A1628)],
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isPinned ? kNeonBlue.withOpacity(0.5) : Colors.white.withOpacity(0.1),
+                color: isPinned ? kNeonBlue.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1),
                 width: isPinned ? 2 : 1,
               ),
               boxShadow: isPinned
                   ? [
                       BoxShadow(
-                        color: kNeonBlue.withOpacity(0.2),
+                        color: kNeonBlue.withValues(alpha: 0.2),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -134,12 +134,12 @@ class AnnouncementsScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [kNeonBlue, kNeonBlue.withOpacity(0.8)],
+                            colors: [kNeonBlue, kNeonBlue.withValues(alpha: 0.8)],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: kNeonBlue.withOpacity(0.4),
+                              color: kNeonBlue.withValues(alpha: 0.4),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -177,7 +177,7 @@ class AnnouncementsScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.access_time, color: Colors.white54, size: 14),
+                          const Icon(Icons.access_time, color: Colors.white54, size: 14),
                           const SizedBox(width: 4),
                           Text(
                             announcement['time'] as String,
@@ -190,11 +190,11 @@ class AnnouncementsScreen extends StatelessWidget {
                       ),
                       Row(
                         children: [
-                          Icon(Icons.admin_panel_settings, color: kNeonBlue.withOpacity(0.7), size: 14),
+                          Icon(Icons.admin_panel_settings, color: kNeonBlue.withValues(alpha: 0.7), size: 14),
                           const SizedBox(width: 4),
                           Text(
                             announcement['admin'] as String,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: kNeonBlue,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../providers/token_provider.dart';
 import '../main.dart';
-import '../main.dart';
 
 class ProfileScreen extends StatelessWidget {
   static const routeName = '/profile';
@@ -40,7 +39,7 @@ class ProfileScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFF0F1E1B),
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: const Color(0xFF00B8F4).withOpacity(0.16)),
+                  border: Border.all(color: const Color(0xFF00B8F4).withValues(alpha: 0.16)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -52,7 +51,7 @@ class ProfileScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF25D366).withOpacity(0.14),
+                            color: const Color(0xFF25D366).withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(18),
                           ),
                           child: const Icon(Icons.person, color: Color(0xFF25D366), size: 28),
@@ -102,7 +101,7 @@ class ProfileScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFF0F1E1B),
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: const Color(0xFF00B8F4).withOpacity(0.16)),
+                  border: Border.all(color: const Color(0xFF00B8F4).withValues(alpha: 0.16)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -144,7 +143,7 @@ class ProfileScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF00B8F4).withOpacity(0.12),
+          color: const Color(0xFF00B8F4).withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -163,7 +162,7 @@ class ProfileScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF25D366).withOpacity(0.12),
+        color: const Color(0xFF25D366).withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(label, style: const TextStyle(color: Colors.white70)),
@@ -183,7 +182,7 @@ class ProfileScreen extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 40,
-              backgroundColor: kNeonGreen.withOpacity(0.2),
+              backgroundColor: kNeonGreen.withValues(alpha: 0.2),
               child: const Icon(Icons.person, color: kNeonGreen, size: 40),
             ),
             const SizedBox(height: 20),

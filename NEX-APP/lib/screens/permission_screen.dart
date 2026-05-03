@@ -3,7 +3,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import 'home_screen.dart';
-import 'splash_screen.dart';
 
 class PermissionScreen extends StatefulWidget {
   static const routeName = '/permissions';
@@ -90,7 +89,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
 
   Future<void> _requestPermission(String key, Permission permission) async {
     setState(() {
-      _permissions[key] = PermissionStatus.requesting;
+      _permissions[key] = PermissionStatus.limited;
     });
 
     final status = await permission.request();
@@ -145,7 +144,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
+                              gradient: const LinearGradient(
                                 colors: [kNeonBlue, kNeonPurple],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
@@ -153,7 +152,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color: kNeonBlue.withOpacity(0.4),
+                                  color: kNeonBlue.withValues(alpha: 0.4),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -175,7 +174,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                             'NEXCHAT needs access to provide the best experience',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withValues(alpha: 0.7),
                               fontSize: 14,
                             ),
                           ),
@@ -184,12 +183,12 @@ class _PermissionScreenState extends State<PermissionScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              color: kNeonBlue.withOpacity(0.1),
+                              color: kNeonBlue.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: kNeonBlue.withOpacity(0.3)),
+                              border: Border.all(color: kNeonBlue.withValues(alpha: 0.3)),
                             ),
                             child: Text(
-                              '${_grantedCount}/${_permissionList.length} permissions granted',
+                              '$_grantedCount/${_permissionList.length} permissions granted',
                               style: const TextStyle(color: kNeonBlue, fontWeight: FontWeight.w500),
                             ),
                           ),
@@ -216,14 +215,14 @@ class _PermissionScreenState extends State<PermissionScreen> {
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: isGranted 
-                                    ? color.withOpacity(0.5) 
-                                    : Colors.white.withOpacity(0.1),
+                                    ? color.withValues(alpha: 0.5) 
+                                    : Colors.white.withValues(alpha: 0.1),
                                 width: isGranted ? 2 : 1,
                               ),
                               boxShadow: isGranted
                                   ? [
                                       BoxShadow(
-                                        color: color.withOpacity(0.2),
+                                        color: color.withValues(alpha: 0.2),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -235,7 +234,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                               leading: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: color.withOpacity(0.2),
+                                  color: color.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(perm['icon'] as IconData, color: color),
@@ -250,7 +249,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                               subtitle: Text(
                                 perm['subtitle'] as String,
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.6),
+                                  color: Colors.white.withValues(alpha: 0.6),
                                   fontSize: 12,
                                 ),
                               ),
@@ -258,7 +257,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                                   ? Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: kNeonGreen.withOpacity(0.2),
+                                        color: kNeonGreen.withValues(alpha: 0.2),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(Icons.check, color: kNeonGreen, size: 20),
@@ -284,7 +283,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                             Container(
                               width: double.infinity,
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
+                                gradient: const LinearGradient(
                                   colors: [kNeonBlue, kNeonPurple],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -292,7 +291,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: kNeonBlue.withOpacity(0.4),
+                                    color: kNeonBlue.withValues(alpha: 0.4),
                                     blurRadius: 12,
                                     offset: const Offset(0, 4),
                                   ),
@@ -341,7 +340,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                                 }
                               },
                               style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                                side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
@@ -350,7 +349,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                               child: Text(
                                 _allPermissionsGranted ? 'Continue' : 'Skip for now',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.7),
+                                  color: Colors.white.withValues(alpha: 0.7),
                                   fontSize: 16,
                                 ),
                               ),

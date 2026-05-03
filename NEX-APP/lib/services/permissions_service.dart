@@ -9,10 +9,10 @@ class PermissionsService {
   // Check all required permissions
   Future<Map<Permission, PermissionStatus>> checkAllPermissions() async {
     return {
-      await Permission.camera: await Permission.camera.status,
-      await Permission.microphone: await Permission.microphone.status,
-      await Permission.notification: await Permission.notification.status,
-      await Permission.storage: await Permission.storage.status,
+      Permission.camera: await Permission.camera.status,
+      Permission.microphone: await Permission.microphone.status,
+      Permission.notification: await Permission.notification.status,
+      Permission.storage: await Permission.storage.status,
     };
   }
 
@@ -85,8 +85,6 @@ class PermissionsService {
         return 'Permanently Denied';
       case PermissionStatus.provisional:
         return 'Provisional';
-      default:
-        return 'Unknown';
     }
   }
 }

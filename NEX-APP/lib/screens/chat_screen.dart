@@ -30,12 +30,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _initializeConversation() async {
     if (widget.conversationId != null) {
       _conversationId = widget.conversationId;
-      setState(() => _isLoading = false);
-    } else {
-      // Create or get default conversation
-      _conversationId = 'default-chat';
-      setState(() => _isLoading = false);
     }
+    setState(() => _isLoading = false);
   }
 
   void sendMessage() async {
@@ -90,14 +86,14 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [kNeonPurple, kNeonPurple.withOpacity(0.6)],
+                  colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: kNeonPurple.withOpacity(0.4),
+                    color: kNeonPurple.withValues(alpha: 0.4),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -118,7 +114,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       decoration: BoxDecoration(
                         color: kNeonGreen,
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: kNeonGreen.withOpacity(0.5), blurRadius: 4)],
+                        boxShadow: [BoxShadow(color: kNeonGreen.withValues(alpha: 0.5), blurRadius: 4)],
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -133,7 +129,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Container(
             margin: const EdgeInsets.only(right: 4),
             decoration: BoxDecoration(
-              color: kNeonPurple.withOpacity(0.15),
+              color: kNeonPurple.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(onPressed: () {}, icon: const Icon(Icons.call, color: kNeonPurple)),
@@ -141,14 +137,14 @@ class _ChatScreenState extends State<ChatScreen> {
           Container(
             margin: const EdgeInsets.only(right: 4),
             decoration: BoxDecoration(
-              color: kNeonPurple.withOpacity(0.15),
+              color: kNeonPurple.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(onPressed: () {}, icon: const Icon(Icons.videocam, color: kNeonPurple)),
           ),
           Container(
             decoration: BoxDecoration(
-              color: kNeonPurple.withOpacity(0.15),
+              color: kNeonPurple.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert, color: kNeonPurple)),
@@ -160,7 +156,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: kNeonPurple.withOpacity(0.1),
+                  color: kNeonPurple.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const CircularProgressIndicator(color: kNeonPurple),
@@ -169,9 +165,7 @@ class _ChatScreenState extends State<ChatScreen> {
           : Column(
               children: [
                 Expanded(
-                  child: _conversationId == 'default-chat'
-                      ? _buildDemoMessages()
-                      : _buildFirestoreMessages(),
+                  child: _buildFirestoreMessages(),
                 ),
                 _buildMessageInput(),
               ],
@@ -179,29 +173,10 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildDemoMessages() {
-    // Fallback demo messages when not connected to Firestore
-    final messages = [
-      {'text': 'Hey, welcome to NEXCHAT!', 'sentByMe': false, 'time': '09:00'},
-      {'text': 'Hi! Ready to chat.', 'sentByMe': true, 'time': '09:02'},
-      {'text': 'Check out the new marketplace packs.', 'sentByMe': false, 'time': '09:05'},
-      {'text': 'Awesome! Just bought the Pro Bundle.', 'sentByMe': true, 'time': '09:10'},
-    ];
-
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final message = messages[index];
-        final isMine = message['sentByMe'] as bool;
-        return _buildMessageBubble(message['text'] as String, isMine, message['time'] as String);
-      },
-    );
-  }
-
   Widget _buildFirestoreMessages() {
-    if (_conversationId == null) return _buildDemoMessages();
+    if (_conversationId == null) {
+      return _buildRecentlyChattedList();
+    }
 
     return StreamBuilder<QuerySnapshot>(
       stream: _chatService.getMessages(_conversationId!),
@@ -212,7 +187,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
         if (snapshot.hasError) {
           return Center(
-            child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white70)),
+            child: Text('Error: [${snapshot.error}', style: const TextStyle(color: Colors.white70)),
           );
         }
 
@@ -238,7 +213,7 @@ class _ChatScreenState extends State<ChatScreen> {
             final time = data['timestamp'] != null
                 ? (data['timestamp'] as Timestamp).toDate().toString().substring(11, 16)
                 : 'Now';
-            return _buildMessageBubble(data['text'] as String, isMine, time);
+            return _buildMessageBubble(data['text'] ?? '', isMine, time);
           },
         );
       },
@@ -256,25 +231,25 @@ class _ChatScreenState extends State<ChatScreen> {
           // NEON PURPLE for user messages, Dark teal for received
           gradient: isMine
               ? LinearGradient(
-                  colors: [kNeonPurple, kNeonPurple.withOpacity(0.7)],
+                  colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.7)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
               : null,
           color: isMine ? null : const Color(0xFF1A1A2E),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(isMine ? 20 : 4),
-            bottomRight: Radius.circular(isMine ? 4 : 20),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
           ),
           border: isMine
-              ? Border.all(color: kNeonPurple.withOpacity(0.5), width: 1.5)
-              : Border.all(color: Colors.white.withOpacity(0.1)),
+              ? Border.all(color: kNeonPurple.withValues(alpha: 0.5), width: 1.5)
+              : Border.all(color: Colors.white.withValues(alpha: 0.1)),
           boxShadow: isMine
               ? [
                   BoxShadow(
-                    color: kNeonPurple.withOpacity(0.3),
+                    color: kNeonPurple.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -286,6 +261,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Text(
               text,
+              softWrap: true,
               style: TextStyle(
                 color: isMine ? Colors.white : Colors.white,
                 fontSize: 15,
@@ -297,8 +273,8 @@ class _ChatScreenState extends State<ChatScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isMine)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 4),
                     child: Icon(Icons.done_all, size: 14, color: Colors.white70),
                   ),
                 Text(
@@ -322,11 +298,11 @@ class _ChatScreenState extends State<ChatScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF121224),
         border: Border(
-          top: BorderSide(color: kNeonPurple.withOpacity(0.3), width: 1),
+          top: BorderSide(color: kNeonPurple.withValues(alpha: 0.3), width: 1),
         ),
         boxShadow: [
           BoxShadow(
-            color: kNeonPurple.withOpacity(0.1),
+            color: kNeonPurple.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -336,7 +312,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: kNeonPurple.withOpacity(0.1),
+              color: kNeonPurple.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
@@ -348,13 +324,13 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [const Color(0xFF1A1A2E), const Color(0xFF1E1E3A)],
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1A1A2E), Color(0xFF1E1E3A)],
                   begin: Alignment.topLeft,
                   end: Alignment.topRight,
                 ),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: kNeonPurple.withOpacity(0.3)),
+                border: Border.all(color: kNeonPurple.withValues(alpha: 0.3)),
               ),
               child: TextField(
                 controller: messageController,
@@ -373,14 +349,14 @@ class _ChatScreenState extends State<ChatScreen> {
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [kNeonPurple, kNeonPurple.withOpacity(0.8)],
+                colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.8)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(25),
               boxShadow: [
                 BoxShadow(
-                  color: kNeonPurple.withOpacity(0.5),
+                  color: kNeonPurple.withValues(alpha: 0.5),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -397,5 +373,110 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildRecentlyChattedList() {
+    final chatService = ChatService();
+    if (chatService.currentUserId == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.chat_bubble_outline, size: 64, color: Colors.white24),
+              SizedBox(height: 16),
+              Text('Select a chat to continue.', style: TextStyle(color: Colors.white70, fontSize: 16)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: chatService.getConversations(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: kNeonGreen));
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white70)));
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chat_bubble_outline, size: 64, color: Colors.white24),
+                  SizedBox(height: 16),
+                  Text('No recent chats.', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                  SizedBox(height: 8),
+                  Text('Start a conversation from the home page.', style: TextStyle(color: Colors.white54, fontSize: 13)),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.white10),
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final isGroup = (data['isGroup'] ?? false) as bool;
+            final lastMessage = (data['lastMessage'] ?? 'No messages').toString();
+
+            return FutureBuilder<String>(
+              future: _resolveTitle(data, chatService.currentUserId!),
+              builder: (context, titleSnapshot) {
+                final title = titleSnapshot.data ?? 'NEX Chat';
+                final avatarLabel = title.isNotEmpty ? title[0].toUpperCase() : 'N';
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  leading: CircleAvatar(
+                    radius: 28,
+                    backgroundColor: isGroup ? kNeonPurple.withValues(alpha: 0.2) : kNeonGreen.withValues(alpha: 0.2),
+                    child: Text(avatarLabel, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                  title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  subtitle: Text(lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                  onTap: () {
+                    setState(() {
+                      _conversationId = docs[index].id;
+                    });
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<String> _resolveTitle(Map<String, dynamic> data, String currentUserId) async {
+    final isGroup = (data['isGroup'] ?? false) as bool;
+    if (isGroup) {
+      return data['groupName']?.toString() ?? 'NEX Group';
+    }
+
+    final participants = List<String>.from(data['participants'] ?? []);
+    final otherIds = participants.where((id) => id != currentUserId).toList();
+    if (otherIds.isEmpty) return 'NEX Chat';
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(otherIds.first).get();
+      if (!doc.exists) return 'NEX Chat';
+      final userData = doc.data() as Map<String, dynamic>;
+      return (userData['username'] ?? userData['name'] ?? 'NEX Chat').toString();
+    } catch (_) {
+      return 'NEX Chat';
+    }
   }
 }

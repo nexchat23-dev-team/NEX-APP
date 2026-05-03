@@ -26,10 +26,10 @@ class FeatureCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF0E1B33),
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFF00FF66).withOpacity(0.18)),
+            border: Border.all(color: const Color(0xFF00FF66).withValues(alpha: 0.18)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF00FF66).withOpacity(0.12),
+                color: const Color(0xFF00FF66).withValues(alpha: 0.12),
                 blurRadius: 18,
                 offset: const Offset(0, 8),
               ),
@@ -39,11 +39,11 @@ class FeatureCard extends StatelessWidget {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00FF66).withOpacity(0.16),
+                  color: const Color(0xFF00FF66).withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF00FF66).withOpacity(0.15),
+                      color: const Color(0xFF00FF66).withValues(alpha: 0.15),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),

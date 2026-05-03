@@ -48,7 +48,7 @@ class _CallsScreenState extends State<CallsScreen> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             leading: CircleAvatar(
               radius: 25,
-              backgroundColor: (call['missed'] as bool) ? Colors.red.withOpacity(0.2) : kNeonGreen.withOpacity(0.2),
+              backgroundColor: (call['missed'] as bool) ? Colors.red.withValues(alpha: 0.2) : kNeonGreen.withValues(alpha: 0.2),
               child: Icon(
                 call['type'] == 'video' ? Icons.videocam : Icons.call,
                 color: (call['missed'] as bool) ? Colors.red : kNeonGreen,
@@ -167,7 +167,7 @@ class _CallScreenState extends State<_CallScreen> {
           const SizedBox(height: 40),
           CircleAvatar(
             radius: 60,
-            backgroundColor: kNeonGreen.withOpacity(0.2),
+            backgroundColor: kNeonGreen.withValues(alpha: 0.2),
             child: Text(
               widget.callerName[0],
               style: const TextStyle(color: kNeonGreen, fontSize: 48, fontWeight: FontWeight.bold),

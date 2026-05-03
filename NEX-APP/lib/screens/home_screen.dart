@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/chat_service.dart';
 import 'chat_screen.dart';
 import 'group_chat_screen.dart';
 import 'calls_screen.dart';
 import 'announcements_screen.dart';
-import 'ai_chat_screen.dart';
 import 'terminal_screen.dart';
+import 'video_feed_screen.dart';
 import 'gaming_hub_screen.dart';
 import 'advertisement_screen.dart';
 import '../main.dart';
@@ -48,7 +49,7 @@ class HomeScreen extends StatelessWidget {
               tooltip: 'Announcements',
             ),
             IconButton(
-              onPressed: () => Navigator.pushNamed(context, AIChatScreen.routeName),
+              onPressed: () {},
               icon: const Icon(Icons.smart_toy),
               tooltip: 'AI Chat',
             ),
@@ -56,6 +57,11 @@ class HomeScreen extends StatelessWidget {
               onPressed: () => Navigator.pushNamed(context, TerminalScreen.routeName),
               icon: const Icon(Icons.terminal),
               tooltip: 'Terminal',
+            ),
+            IconButton(
+              onPressed: () => Navigator.pushNamed(context, VideoFeedScreen.routeName),
+              icon: const Icon(Icons.video_collection),
+              tooltip: 'NEX-Reels',
             ),
             IconButton(
               onPressed: () => Navigator.pushNamed(context, GamingHubScreen.routeName),
@@ -104,55 +110,153 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildChats(BuildContext context) {
-    final List<Map<String, dynamic>> chats = [
-      {'name': 'Alex', 'message': 'Do you have the new token update?', 'time': '13:45', 'unread': 2, 'type': 'chat'},
-      {'name': 'NEX Group', 'message': 'New event launching tomorrow!', 'time': '12:30', 'unread': 5, 'type': 'group'},
-      {'name': 'Sam', 'message': 'Check the new marketplace pack.', 'time': '08:15', 'unread': 0, 'type': 'chat'},
-      {'name': 'Support', 'message': 'Your token balance was updated.', 'time': 'Yesterday', 'unread': 1, 'type': 'chat'},
-    ];
-    return ListView.separated(
-      padding: const EdgeInsets.only(top: 8),
-      itemCount: chats.length,
-      separatorBuilder: (_, __) => const Divider(height: 0, indent: 76, color: Colors.white12),
-      itemBuilder: (context, index) {
-        final chat = chats[index];
-        final isGroup = chat['type'] == 'group';
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          leading: CircleAvatar(
-            radius: 25,
-            backgroundColor: isGroup ? kNeonPurple.withOpacity(0.20) : kNeonGreen.withOpacity(0.20),
-            child: Icon(
-              isGroup ? Icons.group : Icons.person,
-              color: isGroup ? kNeonPurple : Colors.white,
-            ),
-          ),
-          title: Text(chat['name'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          subtitle: Text(chat['message'] as String, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(chat['time'] as String, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              const SizedBox(height: 8),
-              if ((chat['unread'] as int) > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: isGroup ? kNeonPurple : kNeonGreen, borderRadius: BorderRadius.all(Radius.circular(12))),
-                  child: Text('${chat['unread']}', style: const TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
-                ),
-            ],
-          ),
-          onTap: () {
-            if (isGroup) {
-              Navigator.pushNamed(context, GroupChatScreen.routeName);
-            } else {
-              Navigator.pushNamed(context, ChatScreen.routeName);
-            }
+    final chatService = ChatService();
+    final currentUserId = chatService.currentUserId;
+
+    if (currentUserId == null) {
+      return const Center(
+        child: Text('Sign in to view your recent chats.', style: TextStyle(color: Colors.white70)),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: chatService.getConversations(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: kNeonGreen));
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Unable to load chats right now.', style: TextStyle(color: Colors.white70)));
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return _buildEmptyChats(context);
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.only(top: 8),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const Divider(height: 0, indent: 76, color: Colors.white12),
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final isGroup = (data['isGroup'] ?? false) as bool;
+            final lastMessage = (data['lastMessage'] ?? 'No messages yet').toString();
+            final timeText = _formatTime(data['lastMessageTime']);
+
+            return FutureBuilder<String>(
+              future: _resolveConversationTitle(data, currentUserId),
+              builder: (context, titleSnapshot) {
+                final title = titleSnapshot.data ?? (isGroup ? (data['groupName'] ?? 'NEX Group') : 'NEX Chat');
+                final avatarLabel = title.isNotEmpty ? title[0].toUpperCase() : 'N';
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  leading: CircleAvatar(
+                    radius: 25,
+                    backgroundColor: isGroup ? kNeonPurple.withValues(alpha: 0.20) : kNeonGreen.withValues(alpha: 0.20),
+                    child: Text(avatarLabel, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                  title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  subtitle: Text(lastMessage, style: const TextStyle(color: Colors.white70, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: Text(timeText, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  onTap: () {
+                    final conversationId = docs[index].id;
+                    if (isGroup) {
+                      Navigator.pushNamed(context, GroupChatScreen.routeName);
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatScreen(
+                            conversationId: conversationId,
+                            participantName: title,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+            );
           },
         );
       },
     );
+  }
+
+  Widget _buildEmptyChats(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Icon(Icons.chat_bubble_outline, size: 96, color: Colors.white24),
+            const SizedBox(height: 16),
+            const Text(
+              'No recent chats yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70, fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Start a new conversation and your recent chat partners will appear here automatically.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white54, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => Navigator.pushNamed(context, ChatScreen.routeName),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kNeonGreen,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              ),
+              child: const Text('Start a chat', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String> _resolveConversationTitle(Map<String, dynamic> data, String currentUserId) async {
+    try {
+      final isGroup = (data['isGroup'] ?? false) as bool;
+      if (isGroup) {
+        return data['groupName']?.toString() ?? 'NEX Group';
+      }
+
+      final participants = List<String>.from(data['participants'] ?? []);
+      final otherIds = participants.where((id) => id != currentUserId).toList();
+      if (otherIds.isEmpty) return 'NEX Chat';
+      final otherId = otherIds.first;
+      final doc = await FirebaseFirestore.instance.collection('users').doc(otherId).get();
+      if (!doc.exists) return 'NEX Chat';
+      final userData = doc.data() as Map<String, dynamic>;
+      return (userData['username'] ?? userData['name'] ?? otherId).toString();
+    } catch (e) {
+      debugPrint('Error resolving title: $e');
+      return 'NEX Chat';
+    }
+  }
+
+  String _formatTime(dynamic timestamp) {
+    if (timestamp is Timestamp) {
+      final date = timestamp.toDate();
+      final now = DateTime.now();
+      final diff = now.difference(date);
+      if (diff.inDays == 0) {
+        return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      }
+      if (diff.inDays == 1) {
+        return 'Yesterday';
+      }
+      return '${date.day}/${date.month}/${date.year}';
+    }
+    return '';
   }
 
   Widget _buildStatus(BuildContext context) {
@@ -171,7 +275,7 @@ class HomeScreen extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           leading: CircleAvatar(
             radius: 25,
-            backgroundColor: const Color(0xFF25D366).withOpacity(0.22),
+            backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.22),
             child: Text(status['name']![0], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
           title: Text(status['name'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
@@ -346,7 +450,7 @@ class _UserSearchDialogState extends State<_UserSearchDialog> {
                     final user = _searchResults[index];
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: kNeonBlue.withOpacity(0.2),
+                        backgroundColor: kNeonBlue.withValues(alpha: 0.2),
                         child: Text(
                           (user['name'] as String)[0].toUpperCase(),
                           style: const TextStyle(color: kNeonBlue, fontWeight: FontWeight.bold),

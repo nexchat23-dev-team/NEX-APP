@@ -17,7 +17,6 @@ class _AIChatScreenState extends State<AIChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Welcome message
     _messages.add({
       'role': 'assistant',
       'content': 'Hello! I\'m NEX AI, your AI assistant. How can I help you today?',
@@ -46,7 +45,6 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
     _messageController.clear();
 
-    // Simulate AI response (replace with actual OpenAI API call)
     await Future.delayed(const Duration(seconds: 1));
     
     String aiResponse = _getAIResponse(message);
@@ -73,9 +71,9 @@ class _AIChatScreenState extends State<AIChatScreen> {
     } else if (lowerMessage.contains('chat') || lowerMessage.contains('message')) {
       return 'You can start a new chat by tapping the chat button on the home screen. You can also create group chats and send messages to your contacts.';
     } else if (lowerMessage.contains('help')) {
-      return 'I can help you with:\nâ€¢ App features and navigation\nâ€¢ Token and balance questions\nâ€¢ Chat and messaging\nâ€¢ Betting and games\nâ€¢ Account settings\nâ€¢ And more!\n\nJust ask me anything.';
+      return 'I can help you with:\n• App features and navigation\n• Token and balance questions\n• Chat and messaging\n• Betting and games\n• Account settings\n• And more!\n\nJust ask me anything.';
     } else if (lowerMessage.contains('feature')) {
-      return 'NEX-APP includes:\nâ€¢ Real-time chat messaging\nâ€¢ Group chats\nâ€¢ Voice and video calls\nâ€¢ Betting games (Aviator, Mines, Spin Wheel)\nâ€¢ Marketplace for token packs\nâ€¢ User profiles\nâ€¢ AI assistant\nâ€¢ And much more!';
+      return 'NEX-APP includes:\n• Real-time chat messaging\n• Group chats\n• Voice and video calls\n• Betting games (Aviator, Mines, Spin Wheel)\n• Marketplace for token packs\n• User profiles\n• AI assistant\n• And much more!';
     } else {
       return 'I understand you\'re asking about "$message". As NEX AI, I can help you navigate the app, answer questions about features, and assist with various tasks. Is there something specific you\'d like to know?';
     }
@@ -84,23 +82,23 @@ class _AIChatScreenState extends State<AIChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A1628), // Dark blue background
+      backgroundColor: const Color(0xFF0A1628),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D1E36), // Blue-tinted app bar
+        backgroundColor: const Color(0xFF0D1E36),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [kNeonBlue, kNeonBlue.withOpacity(0.6)],
+                  colors: [kNeonBlue, kNeonBlue.withValues(alpha: 0.6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: kNeonBlue.withOpacity(0.4),
+                    color: kNeonBlue.withValues(alpha: 0.4),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -115,7 +113,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
         leading: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: kNeonBlue.withOpacity(0.15),
+            color: kNeonBlue.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
           child: IconButton(
@@ -127,7 +125,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
           Container(
             margin: const EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              color: kNeonBlue.withOpacity(0.15),
+              color: kNeonBlue.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(
@@ -148,7 +146,6 @@ class _AIChatScreenState extends State<AIChatScreen> {
       ),
       body: Column(
         children: [
-          // Messages list
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -168,7 +165,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                     decoration: BoxDecoration(
                       gradient: isUser
                           ? LinearGradient(
-                              colors: [kNeonBlue.withOpacity(0.2), kNeonBlue.withOpacity(0.1)],
+                              colors: [kNeonBlue.withValues(alpha: 0.2), kNeonBlue.withValues(alpha: 0.1)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             )
@@ -176,11 +173,11 @@ class _AIChatScreenState extends State<AIChatScreen> {
                       color: isUser ? null : const Color(0xFF0D1E36),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: kNeonBlue.withOpacity(0.3),
+                        color: kNeonBlue.withValues(alpha: 0.3),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: kNeonBlue.withOpacity(0.1),
+                          color: kNeonBlue.withValues(alpha: 0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -224,7 +221,6 @@ class _AIChatScreenState extends State<AIChatScreen> {
               },
             ),
           ),
-          // Loading indicator
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.all(16),
@@ -247,17 +243,16 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 ],
               ),
             ),
-          // Input area
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: const Color(0xFF0D1E36),
               border: Border(
-                top: BorderSide(color: kNeonBlue.withOpacity(0.3)),
+                top: BorderSide(color: kNeonBlue.withValues(alpha: 0.3)),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: kNeonBlue.withOpacity(0.1),
+                  color: kNeonBlue.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, -2),
                 ),
@@ -268,7 +263,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: kNeonBlue.withOpacity(0.1),
+                      color: kNeonBlue.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: IconButton(
@@ -282,7 +277,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFF0A1628),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: kNeonBlue.withOpacity(0.3)),
+                        border: Border.all(color: kNeonBlue.withValues(alpha: 0.3)),
                       ),
                       child: TextField(
                         controller: _messageController,
@@ -297,20 +292,21 @@ class _AIChatScreenState extends State<AIChatScreen> {
                           ),
                         ),
                         onSubmitted: (_) => _sendMessage(),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [kNeonBlue, kNeonBlue.withOpacity(0.8)],
+                        colors: [kNeonBlue, kNeonBlue.withValues(alpha: 0.8)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: kNeonBlue.withOpacity(0.5),
+                          color: kNeonBlue.withValues(alpha: 0.5),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),

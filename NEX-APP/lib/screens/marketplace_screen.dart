@@ -67,9 +67,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF0F1E1B),
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: const Color(0xFF00B8F4).withOpacity(0.16)),
+                  border: Border.all(color: const Color(0xFF00B8F4).withValues(alpha: 0.16)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.24), blurRadius: 18, offset: const Offset(0, 10)),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.24), blurRadius: 18, offset: const Offset(0, 10)),
                   ],
                 ),
                 child: Column(
@@ -87,7 +87,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF0F1E1B),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFF00B8F4).withOpacity(0.16)),
+                  border: Border.all(color: const Color(0xFF00B8F4).withValues(alpha: 0.16)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -124,9 +124,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFF0F1E1B),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFF00B8F4).withOpacity(0.16)),
+                        border: Border.all(color: const Color(0xFF00B8F4).withValues(alpha: 0.16)),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 14, offset: const Offset(0, 8)),
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 14, offset: const Offset(0, 8)),
                         ],
                       ),
                       child: Column(

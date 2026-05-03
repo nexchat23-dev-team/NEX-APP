@@ -208,14 +208,14 @@ Available commands:
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [kNeonBlue, kNeonBlue.withOpacity(0.6)],
+                  colors: [kNeonBlue, kNeonBlue.withValues(alpha: 0.6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: kNeonBlue.withOpacity(0.4),
+                    color: kNeonBlue.withValues(alpha: 0.4),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -230,7 +230,7 @@ Available commands:
         leading: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: kNeonBlue.withOpacity(0.15),
+            color: kNeonBlue.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
           child: IconButton(
@@ -242,7 +242,7 @@ Available commands:
           Container(
             margin: const EdgeInsets.only(right: 8),
             decoration: BoxDecoration(
-              color: kNeonBlue.withOpacity(0.15),
+              color: kNeonBlue.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: IconButton(
@@ -262,13 +262,13 @@ Available commands:
           // Terminal output
           Expanded(
             child: Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    const Color(0xFF0A1628),
-                    const Color(0xFF0D1E36),
+                    Color(0xFF0A1628),
+                    Color(0xFF0D1E36),
                   ],
                 ),
               ),
@@ -300,11 +300,11 @@ Available commands:
             decoration: BoxDecoration(
               color: const Color(0xFF0D1E36),
               border: Border(
-                top: BorderSide(color: kNeonBlue.withOpacity(0.3)),
+                top: BorderSide(color: kNeonBlue.withValues(alpha: 0.3)),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: kNeonBlue.withOpacity(0.1),
+                  color: kNeonBlue.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, -2),
                 ),
@@ -313,7 +313,7 @@ Available commands:
             child: SafeArea(
               child: Row(
                 children: [
-                  Text(
+                  const Text(
                     '\$ ',
                     style: TextStyle(
                       color: kNeonBlue,
@@ -342,7 +342,7 @@ Available commands:
                   ),
                   Container(
                     decoration: BoxDecoration(
-                      color: kNeonBlue.withOpacity(0.2),
+                      color: kNeonBlue.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(

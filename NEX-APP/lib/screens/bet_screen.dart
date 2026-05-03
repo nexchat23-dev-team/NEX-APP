@@ -165,9 +165,9 @@ class _BetScreenState extends State<BetScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF081827),
                   borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: const Color(0xFF00FF66).withOpacity(0.16)),
+                  border: Border.all(color: const Color(0xFF00FF66).withValues(alpha: 0.16)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 18, offset: const Offset(0, 10)),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 18, offset: const Offset(0, 10)),
                   ],
                 ),
                 child: Column(
@@ -197,7 +197,7 @@ class _BetScreenState extends State<BetScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF081827),
                   borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: const Color(0xFF00FF66).withOpacity(0.16)),
+                  border: Border.all(color: const Color(0xFF00FF66).withValues(alpha: 0.16)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -219,7 +219,7 @@ class _BetScreenState extends State<BetScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF081827),
                   borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: const Color(0xFF00FF66).withOpacity(0.16)),
+                  border: Border.all(color: const Color(0xFF00FF66).withValues(alpha: 0.16)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -252,7 +252,7 @@ class _BetScreenState extends State<BetScreen> {
                             decoration: BoxDecoration(
                               color: color,
                               borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: const Color(0xFF00FF66).withOpacity(0.24)),
+                              border: Border.all(color: const Color(0xFF00FF66).withValues(alpha: 0.24)),
                             ),
                             child: Center(
                               child: revealed
@@ -277,7 +277,7 @@ class _BetScreenState extends State<BetScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF081827),
                   borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: const Color(0xFF00FF66).withOpacity(0.16)),
+                  border: Border.all(color: const Color(0xFF00FF66).withValues(alpha: 0.16)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,

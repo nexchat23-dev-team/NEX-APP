@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/token_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/auth_service.dart';
 import '../main.dart';
 
@@ -14,7 +14,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = true;
+
   bool _soundEnabled = true;
   bool _vibrationEnabled = true;
   String _selectedLanguage = 'English';
@@ -82,12 +82,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // Appearance Section
           _buildSectionHeader('Appearance'),
-          _buildSwitchTile(
-            icon: Icons.dark_mode,
-            title: 'Dark Mode',
-            subtitle: 'Use dark theme',
-            value: _darkModeEnabled,
-            onChanged: (value) => setState(() => _darkModeEnabled = value),
+          Consumer<ThemeProvider>(
+            builder: (context, themeProvider, _) {
+              return _buildSwitchTile(
+                icon: Icons.dark_mode,
+                title: 'Dark Mode',
+                subtitle: themeProvider.isDarkMode ? 'Dark theme enabled' : 'Light theme enabled',
+                value: themeProvider.isDarkMode,
+                onChanged: (value) => themeProvider.toggleTheme(),
+              );
+            },
           ),
           _buildSettingsTile(
             icon: Icons.language,
@@ -190,13 +194,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       decoration: BoxDecoration(
         color: kSurfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: kNeonPurple.withOpacity(0.2),
+            color: kNeonPurple.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: kNeonPurple, size: 24),
@@ -221,13 +225,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       decoration: BoxDecoration(
         color: kSurfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: SwitchListTile(
         secondary: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: kNeonBlue.withOpacity(0.2),
+            color: kNeonBlue.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: kNeonBlue, size: 24),
@@ -236,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
         value: value,
         onChanged: onChanged,
-        activeColor: kNeonGreen,
+        activeThumbColor: kNeonGreen,
       ),
     );
   }
@@ -247,23 +251,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: kSurfaceColor,
         title: const Text('Edit Profile', style: TextStyle(color: Colors.white)),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Display Name',
                 labelStyle: TextStyle(color: Colors.white70),
               ),
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Bio',
                 labelStyle: TextStyle(color: Colors.white70),
               ),
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
           ],
         ),
@@ -287,25 +291,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: kSurfaceColor,
         title: const Text('Change Password', style: TextStyle(color: Colors.white)),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               obscureText: true,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Current Password',
                 labelStyle: TextStyle(color: Colors.white70),
               ),
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             TextField(
               obscureText: true,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'New Password',
                 labelStyle: TextStyle(color: Colors.white70),
               ),
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
           ],
         ),

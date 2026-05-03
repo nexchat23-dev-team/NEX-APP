@@ -57,25 +57,34 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigateAfterDelay() async {
-    await Future.delayed(SplashScreenConstants.splashDelay);
+    try {
+      await Future.delayed(SplashScreenConstants.splashDelay);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final prefs = await SharedPreferences.getInstance();
-    final isFirstTime = prefs.getBool(PermissionScreen.firstTimeKey) ?? true;
-    
-    // If logged in and first time, go to permissions
-    // If logged in and not first time, go to home
-    // If not logged in, go to login
-    String routeName;
-    if (authService.isLoggedIn) {
-      routeName = isFirstTime ? PermissionScreen.routeName : HomeScreen.routeName;
-    } else {
-      routeName = LoginScreen.routeName;
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final prefs = await SharedPreferences.getInstance();
+      final isFirstTime = prefs.getBool(PermissionScreen.firstTimeKey) ?? true;
+      
+      // If logged in and first time, go to permissions
+      // If logged in and not first time, go to home
+      // If not logged in, go to login
+      String routeName;
+      if (authService.isLoggedIn) {
+        routeName = isFirstTime ? PermissionScreen.routeName : HomeScreen.routeName;
+      } else {
+        routeName = LoginScreen.routeName;
+      }
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, routeName);
+      }
+    } catch (e) {
+      debugPrint('Navigation error: $e');
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, LoginScreen.routeName);
+      }
     }
-
-    Navigator.pushReplacementNamed(context, routeName);
   }
 
   @override
@@ -149,26 +158,30 @@ class _AnimatedSplashContentState extends State<_AnimatedSplashContent> with Sin
           Container(
             padding: const EdgeInsets.all(SplashScreenConstants.padding),
             decoration: BoxDecoration(
-              color: SplashScreenConstants.backgroundOpacity.withOpacity(SplashScreenConstants.backgroundOpacityValue),
+              color: SplashScreenConstants.backgroundOpacity.withValues(alpha: SplashScreenConstants.backgroundOpacityValue),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: SplashScreenConstants.shadowColor.withOpacity(SplashScreenConstants.shadowOpacity),
+                  color: SplashScreenConstants.shadowColor.withValues(alpha: SplashScreenConstants.shadowOpacity),
                   blurRadius: SplashScreenConstants.blurRadius,
                   offset: SplashScreenConstants.shadowOffset,
                 ),
               ],
             ),
-            child: Icon(
-              Icons.chat_bubble_rounded,
-              size: SplashScreenConstants.iconSize,
-              color: SplashScreenConstants.primaryGreen,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(40),
+              child: Image.asset(
+                'assets/images/logo.jpg',
+                width: SplashScreenConstants.iconSize,
+                height: SplashScreenConstants.iconSize,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           const SizedBox(height: SplashScreenConstants.padding),
-          Text(
+          const Text(
             SplashScreenConstants.appTitle,
-            style: const TextStyle(
+            style: TextStyle(
               color: SplashScreenConstants.textPrimary,
               fontSize: SplashScreenConstants.titleFontSize,
               fontWeight: FontWeight.bold,
@@ -176,20 +189,20 @@ class _AnimatedSplashContentState extends State<_AnimatedSplashContent> with Sin
             ),
           ),
           const SizedBox(height: SplashScreenConstants.spacing),
-          Text(
+          const Text(
             SplashScreenConstants.appSubtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: SplashScreenConstants.textSecondary,
               fontSize: SplashScreenConstants.subtitleFontSize,
             ),
           ),
           const SizedBox(height: SplashScreenConstants.largeSpacing),
-          SizedBox(
+          const SizedBox(
             width: SplashScreenConstants.progressSize,
             height: SplashScreenConstants.progressSize,
             child: CircularProgressIndicator(
-              valueColor: const AlwaysStoppedAnimation(SplashScreenConstants.accentBlue),
+              valueColor: AlwaysStoppedAnimation(SplashScreenConstants.accentBlue),
               strokeWidth: SplashScreenConstants.progressStrokeWidth,
             ),
           ),
