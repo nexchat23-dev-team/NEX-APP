@@ -1,0 +1,32 @@
+name: nex_app
+description: A Flutter version of NEXCHAT.
+version: 1.0.0+1
+publish_to: 'none'
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.5
+  firebase_core: ^2.14.0
+  firebase_auth: ^4.6.0
+  cloud_firestore: ^4.9.0
+  firebase_storage: ^11.1.0
+  provider: ^6.0.8
+  permission_handler: ^11.3.0
+  shared_preferences: ^2.2.2
+  google_sign_in: ^6.1.5
+  nearby_connections: ^4.3.0
+  file_picker: ^5.3.1
+  path_provider: ^2.0.17
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

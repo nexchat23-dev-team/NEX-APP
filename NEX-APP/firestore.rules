@@ -1,0 +1,1714 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================
+    // HELPER FUNCTIONS
+    // ============================================================
+    
+    // Basic authentication check
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Get current user ID
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // Check if user is owner of a resource
+    function isOwner(userId) {
+      return isAuthenticated() && uid() == userId;
+    }
+
+    // Check if user is in a group
+    function isGroupMember(groupId) {
+      return isAuthenticated() &&
+             exists(/databases/{database}/documents/groups/$(groupId)) &&
+             uid() in get(/databases/{database}/documents/groups/$(groupId)).data.members;
+    }
+
+    // Check if user is group admin
+    function isGroupAdmin(groupId) {
+      return isAuthenticated() &&
+             exists(/databases/{database}/documents/groups/$(groupId)) &&
+             uid() in get(/databases/{database}/documents/groups/$(groupId)).data.admins;
+    }
+
+    // Super admin role (use environment variables in production)
+    function isSuperAdmin() {
+      return isAuthenticated() && uid() in ['demonalexander526@gmail.com'];
+    }
+
+    // Check if user is clan member
+    function isClanMember(clanId) {
+      return isAuthenticated() &&
+             exists(/databases/{database}/documents/clans/$(clanId)) &&
+             uid() in get(/databases/{database}/documents/clans/$(clanId)).data.members;
+    }
+
+    // Check if user is clan admin
+    function isClanAdmin(clanId) {
+      return isAuthenticated() &&
+             exists(/databases/{database}/documents/clans/$(clanId)) &&
+             uid() in get(/databases/{database}/documents/clans/$(clanId)).data.admins;
+    }
+
+    // Check if user is squad member
+    function isSquadMember(squadId) {
+      return isAuthenticated() &&
+             exists(/databases/{database}/documents/squads/$(squadId)) &&
+             uid() in get(/databases/{database}/documents/squads/$(squadId)).data.members;
+    }
+
+    // Validate timestamp is recent (within 5 minutes)
+    function isRecentTimestamp(ts) {
+      return ts != null && 
+             (request.time.toMillis() - ts.toMillis()) < 300000;
+    }
+
+    // Validate timestamp is not in future
+    function isValidTimestamp(ts) {
+      return ts != null && ts <= request.time;
+    }
+
+    // Check if user is not blocked
+    function isNotBlocked(userId) {
+      return !exists(/databases/{database}/documents/blockedUsers/$(uid() + '_' + userId)) &&
+             !exists(/databases/{database}/documents/blockedUsers/$(userId + '_' + uid()));
+    }
+
+    // Validate required fields exist
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    // Validate field is string and not empty
+    function isNonEmptyString(field) {
+      return field is string && field.size() > 0 && field.size() < 1000;
+    }
+
+    // Validate field is non-negative integer
+    function isNonNegativeInt(field) {
+      return field is int && field >= 0;
+    }
+
+    // Validate streak data structure
+    function isValidStreakData(data) {
+      return data.userId is string &&
+             data.currentStreak is int && data.currentStreak >= 0 &&
+             data.bestStreak is int && data.bestStreak >= 0 &&
+             data.lastActiveAt is timestamp &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp &&
+             data.bestStreak >= data.currentStreak &&
+             data.lastActiveAt <= request.time &&
+             data.createdAt <= request.time &&
+             data.updatedAt <= request.time;
+    }
+
+    // Check if user is a super admin (you'll need to define this in your app)
+    function isSuperAdmin() {
+      return uid() in ['super_admin_uid_1', 'super_admin_uid_2']; // Replace with actual admin UIDs
+    }
+
+    // Validate email format (basic)
+    function isValidEmail(email) {
+      return email is string && email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    // Prevent data modification on read-only fields
+    function dataUnchanged(field) {
+      return resource.data[field] == request.resource.data[field];
+    }
+
+    // Check if document is not too large
+    function isReasonableSize(data) {
+      return data.size() < 1000000; // ~1MB limit per document
+    }
+
+    // ============================================================
+    // USERS
+    // ============================================================
+    match /users/{uid} {
+      // Read: Only authenticated users can read any profile
+      allow read: if isAuthenticated();
+      
+      // Create: User can only create their own profile with validation
+      allow create: if isOwner(uid) && 
+                       request.resource.data.uid == uid &&
+                       hasRequiredFields(request.resource.data, ['uid', 'email', 'createdAt']) &&
+                       isValidEmail(request.resource.data.email) &&
+                       isValidTimestamp(request.resource.data.createdAt) &&
+                       isReasonableSize(request.resource.data);
+      
+      // Update: Only owner can update, with field validation
+      allow update: if isOwner(uid) &&
+                       !('uid' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('email' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       isReasonableSize(request.resource.data);
+      
+      // Delete: Deny all deletes
+      allow delete: if false;
+    }
+
+    // ============================================================
+    // GROUPS
+    // ============================================================
+    match /groups/{groupId} {
+      // Create: Only authenticated user can create with proper validation
+      allow create: if isAuthenticated() && 
+                       uid() == request.resource.data.creatorId &&
+                       hasRequiredFields(request.resource.data, ['creatorId', 'members', 'admins', 'name', 'createdAt']) &&
+                       uid() in request.resource.data.members &&
+                       uid() in request.resource.data.admins &&
+                       isNonEmptyString(request.resource.data.name) &&
+                       isValidTimestamp(request.resource.data.createdAt);
+      
+      // Read: Only authenticated users can read
+      allow read: if isAuthenticated();
+      
+      // Update: Only group admins can update
+      allow update: if isAuthenticated() && 
+                       uid() in resource.data.admins &&
+                       !('creatorId' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       isReasonableSize(request.resource.data);
+      
+      // Delete: Only creator can delete
+      allow delete: if isAuthenticated() && uid() == resource.data.creatorId;
+
+      match /messages/{messageId} {
+        allow create: if isAuthenticated() && 
+                         isGroupMember(groupId) &&
+                         hasRequiredFields(request.resource.data, ['senderId', 'text', 'timestamp']) &&
+                         request.resource.data.senderId == uid() &&
+                         isValidTimestamp(request.resource.data.timestamp) &&
+                         isNonEmptyString(request.resource.data.text);
+        
+        allow read: if isAuthenticated() && isGroupMember(groupId);
+        
+        allow update, delete: if isAuthenticated() && 
+                                 isGroupMember(groupId) &&
+                                 (uid() == resource.data.senderId || isGroupAdmin(groupId));
+      }
+
+      match /documents/{documentId} {
+        allow create, read: if isAuthenticated() && isGroupMember(groupId);
+        
+        allow update, delete: if isAuthenticated() && 
+                                 isGroupMember(groupId) &&
+                                 (uid() == resource.data.uploadedBy || isGroupAdmin(groupId));
+      }
+
+      match /sharedMedia/{mediaId} {
+        allow create, read: if isAuthenticated() && isGroupMember(groupId);
+        
+        allow update, delete: if isAuthenticated() && 
+                                 isGroupMember(groupId) &&
+                                 (uid() == resource.data.senderId || isGroupAdmin(groupId));
+      }
+    }
+
+    // ============================================================
+    // GROUP MESSAGES (TOP-LEVEL)
+    // ============================================================
+    match /groupMessages/{messageId} {
+      // Create: User must be group member with proper validation
+      allow create: if isAuthenticated() && 
+                       isGroupMember(request.resource.data.groupId) &&
+                       hasRequiredFields(request.resource.data, ['groupId', 'senderId', 'text', 'timestamp']) &&
+                       request.resource.data.senderId == uid() &&
+                       isValidTimestamp(request.resource.data.timestamp) &&
+                       isNonEmptyString(request.resource.data.text);
+      
+      // Read: Only group members can read
+      allow read: if isAuthenticated() && isGroupMember(resource.data.groupId);
+      
+      // Update/Delete: Only sender or group admin
+      allow update, delete: if isAuthenticated() && 
+                               isGroupMember(resource.data.groupId) &&
+                               (uid() == resource.data.senderId || isGroupAdmin(resource.data.groupId));
+    }
+
+    // ============================================================
+    // DIRECT MESSAGES
+    // ============================================================
+    match /messages/{messageId} {
+      // Create: User can send message only to non-blocked user
+      allow create: if isAuthenticated() && 
+                       request.resource.data.from == uid() &&
+                       hasRequiredFields(request.resource.data, ['from', 'to', 'text', 'timestamp']) &&
+                       isValidTimestamp(request.resource.data.timestamp) &&
+                       isNonEmptyString(request.resource.data.text) &&
+                       isNotBlocked(request.resource.data.to);
+      
+      // Read: Only sender and receiver can read
+      allow read: if isAuthenticated() && 
+                     (uid() == resource.data.from || uid() == resource.data.to) &&
+                     isNotBlocked(resource.data.from == uid() ? resource.data.to : resource.data.from);
+      
+      // Update: Only original sender can edit
+      allow update: if isAuthenticated() && 
+                       uid() == resource.data.from &&
+                       !('from' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('to' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      // Delete: Both sender and receiver can delete
+      allow delete: if isAuthenticated() && 
+                       (uid() == resource.data.from || uid() == resource.data.to);
+    }
+
+    // ============================================================
+    // TYPING STATUS (Real-time typing indicators)
+    // ============================================================
+    match /typingStatus/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.resource.data.userId == uid();
+    }
+
+    // ============================================================
+    // STATUSES
+    // ============================================================
+    match /statuses/{statusId} {
+      // Read: Authenticated users can view all statuses
+      allow read: if isAuthenticated();
+      
+      // Create: User can only create their own status
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == uid() &&
+                       hasRequiredFields(request.resource.data, ['userId', 'content', 'createdAt']) &&
+                       isNonEmptyString(request.resource.data.content) &&
+                       isValidTimestamp(request.resource.data.createdAt);
+      
+      // Update/Delete: Only owner can modify
+      allow update, delete: if isAuthenticated() && 
+                               uid() == resource.data.userId &&
+                               !('userId' in request.resource.data.diff(resource.data).affectedKeys());
+    }
+
+    // ============================================================
+    // STATUS VIEWS
+    // ============================================================
+    match /statusViews/{viewId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // STATUS REACTIONS
+    // ============================================================
+    match /statusReactions/{reactionId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // ADVERTISEMENTS
+    // ============================================================
+    match /advertisements/{adId} {
+      // Read: Can only read active ads
+      allow read: if isAuthenticated() && 
+                     resource.data.status == 'active' &&
+                     exists(/databases/{database}/documents/users/$(resource.data.sellerUID));
+      
+      // Create: User can create their own ads
+      allow create: if isAuthenticated() && 
+                       request.resource.data.sellerUID == uid() &&
+                       hasRequiredFields(request.resource.data, ['sellerUID', 'title', 'price', 'status', 'createdAt']) &&
+                       isNonEmptyString(request.resource.data.title) &&
+                       isNonNegativeInt(request.resource.data.price) &&
+                       request.resource.data.status in ['active', 'inactive', 'sold'] &&
+                       isValidTimestamp(request.resource.data.createdAt);
+      
+      // Update: Seller can modify their own ads
+      allow update: if isAuthenticated() && 
+                       uid() == resource.data.sellerUID &&
+                       !('sellerUID' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('createdAt' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      // Delete: Seller can delete their own ads
+      allow delete: if isAuthenticated() && uid() == resource.data.sellerUID;
+    }
+
+    // ============================================================
+    // SHARED MEDIA
+    // ============================================================
+    match /sharedMedia/{mediaId} {
+      allow create: if isAuthenticated() && request.resource.data.senderId == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.senderId || uid() == resource.data.recipientId);
+      allow delete: if isAuthenticated() && (uid() == resource.data.senderId || uid() == resource.data.recipientId);
+    }
+
+    // ============================================================
+    // OFFLINE MESSAGE QUEUE
+    // ============================================================
+    match /offlineMessageQueue/{queueId} {
+      allow create, read, update, delete: if isAuthenticated() && request.resource.data.userId == uid();
+    }
+
+    // ============================================================
+    // MESSAGE ACTIVITY
+    // ============================================================
+    match /messageActivity/{activityId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // REPORTS
+    // ============================================================
+    match /reports/{reportId} {
+      // Create: User can report content with proper validation
+      allow create: if isAuthenticated() && 
+                       request.resource.data.reportedBy == uid() &&
+                       hasRequiredFields(request.resource.data, ['reportedBy', 'targetId', 'reason', 'timestamp', 'status']) &&
+                       isNonEmptyString(request.resource.data.reason) &&
+                       request.resource.data.reason.size() <= 500 &&
+                       request.resource.data.status in ['pending', 'reviewed', 'resolved', 'dismissed'] &&
+                       isValidTimestamp(request.resource.data.timestamp) &&
+                       uid() != request.resource.data.targetId;
+      
+      // Read: Reporter can view their own, super admin can view all
+      allow read: if isAuthenticated() && 
+                     (uid() == resource.data.reportedBy || isSuperAdmin());
+      
+      // Update: Only super admin can update status
+      allow update: if isSuperAdmin() &&
+                       !('reportedBy' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('targetId' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      // Delete: Only super admin can delete
+      allow delete: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // CHAT REQUESTS (Friend/Chat Requests)
+    // ============================================================
+    match /chatRequests/{requestId} {
+      // Create: User can send chat request to non-blocked user
+      allow create: if isAuthenticated() && 
+                       request.resource.data.from == uid() &&
+                       hasRequiredFields(request.resource.data, ['from', 'to', 'status', 'createdAt']) &&
+                       uid() != request.resource.data.to &&
+                       request.resource.data.status in ['pending', 'accepted', 'rejected'] &&
+                       isValidTimestamp(request.resource.data.createdAt) &&
+                       isNotBlocked(request.resource.data.to);
+      
+      // Read: Only involved parties can see request
+      allow read: if isAuthenticated() && 
+                     (uid() == resource.data.from || uid() == resource.data.to);
+      
+      // Update: Receiver can accept/reject, sender cannot change
+      allow update: if isAuthenticated() && 
+                       uid() == resource.data.to &&
+                       !('from' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('to' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       request.resource.data.status in ['pending', 'accepted', 'rejected'];
+      
+      // Delete: Both parties can delete
+      allow delete: if isAuthenticated() && 
+                       (uid() == resource.data.from || uid() == resource.data.to);
+    }
+
+    // ============================================================
+    // USER SECURITY (Security/Privacy Settings)
+    // ============================================================
+    match /userSecurity/{uid} {
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow write: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // GROUP JOIN REQUESTS
+    // ============================================================
+    match /groupJoinRequests/{requestId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.userId || isGroupAdmin(resource.data.groupId));
+      allow update: if isAuthenticated() && isGroupAdmin(resource.data.groupId);
+      allow delete: if isAuthenticated() && (uid() == resource.data.userId || isGroupAdmin(resource.data.groupId));
+    }
+
+    // ============================================================
+    // BLOCKED USERS
+    // ============================================================
+    match /blockedUsers/{blockId} {
+      // Create: User can block another user
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == uid() &&
+                       hasRequiredFields(request.resource.data, ['userId', 'blockedUserId', 'timestamp']) &&
+                       uid() != request.resource.data.blockedUserId &&
+                       isValidTimestamp(request.resource.data.timestamp) &&
+                       exists(/databases/{database}/documents/users/$(request.resource.data.blockedUserId));
+      
+      // Read: Only owner can view their blocked list
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      
+      // Update: Deny updates to blocked users list
+      allow update: if false;
+      
+      // Delete: User can unblock
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // PRESENCE
+    // ============================================================
+    match /presence/{uid} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // USER BACKGROUNDS
+    // ============================================================
+    match /userBackgrounds/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // SQUADS (Small teams/groups)
+    // ============================================================
+    match /squads/{squadId} {
+      allow create: if isAuthenticated() && uid() == request.resource.data.leaderId;
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() in resource.data.members;
+      allow delete: if isAuthenticated() && uid() == resource.data.leaderId;
+
+      match /messages/{messageId} {
+        allow create: if isAuthenticated() && 
+                         uid() in get(/databases/{database}/documents/squads/$(squadId)).data.members &&
+                         hasRequiredFields(request.resource.data, ['senderId', 'text', 'timestamp']) &&
+                         request.resource.data.senderId == uid() &&
+                         isValidTimestamp(request.resource.data.timestamp) &&
+                         isNonEmptyString(request.resource.data.text);
+        
+        allow read: if isAuthenticated() && uid() in get(/databases/{database}/documents/squads/$(squadId)).data.members;
+        
+        allow update, delete: if isAuthenticated() && uid() == resource.data.senderId;
+      }
+
+      match /sessions/{sessionId} {
+        allow create: if isAuthenticated() && uid() in get(/databases/{database}/documents/squads/$(squadId)).data.members;
+        allow read: if isAuthenticated() && uid() in get(/databases/{database}/documents/squads/$(squadId)).data.members;
+        allow update, delete: if isAuthenticated() && uid() == resource.data.creatorId;
+      }
+    }
+
+    // ============================================================
+    // CLANS (Large communities/families)
+    // ============================================================
+    match /clans/{clanId} {
+      // Create: User creates clan and becomes founder
+      allow create: if isAuthenticated() && 
+                       uid() == request.resource.data.founderId &&
+                       hasRequiredFields(request.resource.data, ['founderId', 'name', 'members', 'admins', 'createdAt']) &&
+                       isNonEmptyString(request.resource.data.name) &&
+                       uid() in request.resource.data.members &&
+                       uid() in request.resource.data.admins &&
+                       isValidTimestamp(request.resource.data.createdAt);
+      
+      // Read: All authenticated users can view clan info
+      allow read: if isAuthenticated();
+      
+      // Update: Only clan admins can update
+      allow update: if isAuthenticated() && 
+                       uid() in resource.data.admins &&
+                       !('founderId' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      // Delete: Only founder can delete
+      allow delete: if isAuthenticated() && uid() == resource.data.founderId;
+
+      match /members/{memberId} {
+        allow create: if isAuthenticated() && 
+                         uid() in get(/databases/{database}/documents/clans/$(clanId)).data.admins &&
+                         hasRequiredFields(request.resource.data, ['userId', 'joinedAt', 'role']);
+        
+        allow read: if isAuthenticated() && 
+                       uid() in get(/databases/{database}/documents/clans/$(clanId)).data.members;
+        
+        allow update: if isAuthenticated() && 
+                         uid() in get(/databases/{database}/documents/clans/$(clanId)).data.admins &&
+                         !('userId' in request.resource.data.diff(resource.data).affectedKeys());
+        
+        allow delete: if isAuthenticated() && 
+                         uid() in get(/databases/{database}/documents/clans/$(clanId)).data.admins;
+      }
+
+      match /messages/{messageId} {
+        allow create: if isAuthenticated() && 
+                         uid() in get(/databases/{database}/documents/clans/$(clanId)).data.members &&
+                         hasRequiredFields(request.resource.data, ['senderId', 'text', 'timestamp']) &&
+                         request.resource.data.senderId == uid() &&
+                         isValidTimestamp(request.resource.data.timestamp) &&
+                         isNonEmptyString(request.resource.data.text);
+        
+        allow read: if isAuthenticated() && 
+                       uid() in get(/databases/{database}/documents/clans/$(clanId)).data.members;
+        
+        allow update, delete: if isAuthenticated() && 
+                                 uid() in get(/databases/{database}/documents/clans/$(clanId)).data.members &&
+                                 (uid() == resource.data.senderId || uid() in get(/databases/{database}/documents/clans/$(clanId)).data.admins);
+      }
+
+      match /events/{eventId} {
+        allow create: if isAuthenticated() && 
+                         uid() in get(/databases/{database}/documents/clans/$(clanId)).data.admins;
+        
+        allow read: if isAuthenticated() && 
+                       uid() in get(/databases/{database}/documents/clans/$(clanId)).data.members;
+        
+        allow update, delete: if isAuthenticated() && 
+                                 uid() in get(/databases/{database}/documents/clans/$(clanId)).data.admins;
+      }
+
+      match /squads/{squadId} {
+        allow create: if isAuthenticated() && 
+                         uid() in get(/databases/{database}/documents/clans/$(clanId)).data.members;
+        
+        allow read: if isAuthenticated() && 
+                       uid() in get(/databases/{database}/documents/clans/$(clanId)).data.members;
+        
+        allow update: if isAuthenticated() && 
+                         uid() == resource.data.leaderId;
+        
+        allow delete: if isAuthenticated() && 
+                         (uid() == resource.data.leaderId || uid() in get(/databases/{database}/documents/clans/$(clanId)).data.admins);
+      }
+    }
+
+    // ============================================================
+    // SESSIONS (Game sessions, meetings, etc.)
+    // ============================================================
+    match /sessions/{sessionId} {
+      allow create: if isAuthenticated() && uid() == request.resource.data.creatorId;
+      allow read: if isAuthenticated() && uid() in resource.data.participants;
+      allow update: if isAuthenticated() && uid() == resource.data.creatorId;
+      allow delete: if isAuthenticated() && uid() == resource.data.creatorId;
+
+      match /messages/{messageId} {
+        allow create: if isAuthenticated() && 
+                         uid() in get(/databases/{database}/documents/sessions/$(sessionId)).data.participants &&
+                         hasRequiredFields(request.resource.data, ['senderId', 'text', 'timestamp']) &&
+                         request.resource.data.senderId == uid() &&
+                         isValidTimestamp(request.resource.data.timestamp) &&
+                         isNonEmptyString(request.resource.data.text);
+        
+        allow read: if isAuthenticated() && uid() in get(/databases/{database}/documents/sessions/$(sessionId)).data.participants;
+        
+        allow update, delete: if isAuthenticated() && uid() == resource.data.senderId;
+      }
+
+      match /participants/{participantId} {
+        allow create: if isAuthenticated() && uid() == get(/databases/{database}/documents/sessions/$(sessionId)).data.creatorId;
+        allow read: if isAuthenticated() && uid() in get(/databases/{database}/documents/sessions/$(sessionId)).data.participants;
+        allow update, delete: if isAuthenticated() && uid() == get(/databases/{database}/documents/sessions/$(sessionId)).data.creatorId;
+      }
+    }
+
+    // ============================================================
+    // CLAN JOIN REQUESTS
+    // ============================================================
+    match /clanJoinRequests/{requestId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.userId || uid() in get(/databases/{database}/documents/clans/$(resource.data.clanId)).data.admins);
+      allow update: if isAuthenticated() && uid() in get(/databases/{database}/documents/clans/$(resource.data.clanId)).data.admins;
+      allow delete: if isAuthenticated() && (uid() == resource.data.userId || uid() in get(/databases/{database}/documents/clans/$(resource.data.clanId)).data.admins);
+    }
+
+    // ============================================================
+    // CONVERSATIONS (General chat conversations)
+    // ============================================================
+    match /conversations/{conversationId} {
+      allow create: if isAuthenticated() && uid() in request.resource.data.participants;
+      allow read: if isAuthenticated() && (uid() in resource.data.participants || resource.data.isGroup == true);
+      allow update: if isAuthenticated() && (uid() in resource.data.participants || (uid() in request.resource.data.participants && resource.data.isGroup == true));
+      allow delete: if isAuthenticated() && uid() == resource.data.createdBy;
+
+      match /messages/{messageId} {
+        allow create: if isAuthenticated() && 
+                         uid() in get(/databases/{database}/documents/conversations/$(conversationId)).data.participants &&
+                         hasRequiredFields(request.resource.data, ['senderId', 'text', 'timestamp']) &&
+                         request.resource.data.senderId == uid() &&
+                         isValidTimestamp(request.resource.data.timestamp) &&
+                         isNonEmptyString(request.resource.data.text);
+        
+        allow read: if isAuthenticated() && uid() in get(/databases/{database}/documents/conversations/$(conversationId)).data.participants;
+        
+        allow update, delete: if isAuthenticated() && uid() == resource.data.senderId;
+      }
+
+      match /userSettings/{userId} {
+        allow read, write: if isAuthenticated() && uid() == userId;
+      }
+
+      match /members/{memberId} {
+        allow read, write: if isAuthenticated() && uid() in get(/databases/{database}/documents/conversations/$(conversationId)).data.participants;
+      }
+
+      match /joinRequests/{userId} {
+        allow create: if isAuthenticated() && uid() == userId && request.resource.data.userId == uid();
+        allow read: if isAuthenticated() && (uid() == userId || uid() in get(/databases/{database}/documents/conversations/$(conversationId)).data.admins);
+        allow update: if isAuthenticated() && uid() in get(/databases/{database}/documents/conversations/$(conversationId)).data.admins;
+        allow delete: if isAuthenticated() && (uid() == userId || uid() in get(/databases/{database}/documents/conversations/$(conversationId)).data.admins);
+      }
+    }
+
+    // ============================================================
+    // DIRECT MESSAGE BACKGROUNDS
+    // ============================================================
+    match /directMessageBackgrounds/{docId} {
+      allow read, write: if isAuthenticated() && (uid() == docId.split('_')[0] || uid() == docId.split('_')[1]);
+    }
+
+    // ============================================================
+    // GROUP BACKGROUNDS
+    // ============================================================
+    match /groupBackgrounds/{groupId} {
+      allow read, write: if isAuthenticated() && isGroupMember(groupId);
+    }
+
+    // ============================================================
+    // CALLS
+    // ============================================================
+    match /calls/{callId} {
+      // Create: Caller can initiate call to non-blocked user
+      allow create: if isAuthenticated() && 
+                       request.resource.data.callerId == uid() &&
+                       hasRequiredFields(request.resource.data, ['callerId', 'receiverId', 'status', 'createdAt']) &&
+                       uid() != request.resource.data.receiverId &&
+                       request.resource.data.status in ['pending', 'active', 'ended', 'rejected'] &&
+                       isValidTimestamp(request.resource.data.createdAt) &&
+                       exists(/databases/{database}/documents/users/$(request.resource.data.receiverId)) &&
+                       isNotBlocked(request.resource.data.receiverId);
+      
+      // Read: Only call participants can view
+      allow read: if isAuthenticated() && 
+                     (uid() == resource.data.callerId || uid() == resource.data.receiverId);
+      
+      // Update: Both parties can update status
+      allow update: if isAuthenticated() && 
+                       (uid() == resource.data.callerId || uid() == resource.data.receiverId) &&
+                       !('callerId' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('receiverId' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      // Delete: Participants can delete ended calls
+      allow delete: if isAuthenticated() && 
+                       (uid() == resource.data.callerId || uid() == resource.data.receiverId) &&
+                       resource.data.status in ['ended', 'rejected'];
+
+      match /iceCandidates/{candidateId} {
+        allow create: if isAuthenticated() && 
+                         request.resource.data.from == uid() &&
+                         (uid() == get(/databases/{database}/documents/calls/$(callId)).data.callerId || 
+                          uid() == get(/databases/{database}/documents/calls/$(callId)).data.receiverId);
+        
+        allow read: if isAuthenticated() && 
+                       (uid() == get(/databases/{database}/documents/calls/$(callId)).data.callerId || 
+                        uid() == get(/databases/{database}/documents/calls/$(callId)).data.receiverId);
+        
+        allow delete: if isAuthenticated() && request.resource.data.from == uid();
+      }
+
+      match /sdp/{sdpId} {
+        allow create: if isAuthenticated() && 
+                         request.resource.data.from == uid() &&
+                         (uid() == get(/databases/{database}/documents/calls/$(callId)).data.callerId || 
+                          uid() == get(/databases/{database}/documents/calls/$(callId)).data.receiverId);
+        
+        allow read: if isAuthenticated() && 
+                       (uid() == get(/databases/{database}/documents/calls/$(callId)).data.callerId || 
+                        uid() == get(/databases/{database}/documents/calls/$(callId)).data.receiverId);
+        
+        allow update: if isAuthenticated() && request.resource.data.from == uid();
+      }
+    }
+
+    // ============================================================
+    // CALL HISTORY
+    // ============================================================
+    match /callHistory/{historyId} {
+      allow create: if isAuthenticated() && (request.resource.data.callerId == uid() || request.resource.data.receiverId == uid());
+      allow read: if isAuthenticated() && (uid() == resource.data.callerId || uid() == resource.data.receiverId);
+      allow update: if isAuthenticated() && (uid() == resource.data.callerId || uid() == resource.data.receiverId);
+      allow delete: if isAuthenticated() && (uid() == resource.data.callerId || uid() == resource.data.receiverId);
+    }
+
+    // ============================================================
+    // GROUP CALLS
+    // ============================================================
+    match /groupCalls/{groupCallId} {
+      allow create: if isAuthenticated() && isGroupMember(request.resource.data.groupId);
+      allow read: if isAuthenticated() && isGroupMember(resource.data.groupId);
+      allow update: if isAuthenticated() && uid() == resource.data.initiatorId;
+      allow delete: if isAuthenticated() && uid() == resource.data.initiatorId;
+
+      match /participants/{participantId} {
+        allow create: if isAuthenticated() && isGroupMember(get(/databases/$(database)/documents/groupCalls/$(groupCallId)).data.groupId);
+        allow read: if isAuthenticated() && isGroupMember(get(/databases/$(database)/documents/groupCalls/$(groupCallId)).data.groupId);
+        allow update: if isAuthenticated() && uid() == resource.data.userId;
+        allow delete: if isAuthenticated() && (uid() == resource.data.userId || uid() == get(/databases/$(database)/documents/groupCalls/$(groupCallId)).data.initiatorId);
+      }
+    }
+
+    // ============================================================
+    // NOTIFICATIONS
+    // ============================================================
+    match /notifications/{notificationId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update, delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // USER SETTINGS
+    // ============================================================
+    match /userSettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // APP CONFIG
+    // ============================================================
+    match /appConfig/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // SYSTEM LOGS
+    // ============================================================
+    match /systemLogs/{logId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // ANALYTICS
+    // ============================================================
+    match /analytics/{analyticsId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // ANNOUNCEMENTS
+    // ============================================================
+    match /announcements/{announcementId} {
+      // Read: All authenticated users can view announcements
+      allow read: if isAuthenticated();
+      
+      // Write: Only super admin with validation
+      allow write: if isSuperAdmin() &&
+                      hasRequiredFields(request.resource.data, ['title', 'content', 'createdAt']) &&
+                      isNonEmptyString(request.resource.data.title) &&
+                      isNonEmptyString(request.resource.data.content) &&
+                      isValidTimestamp(request.resource.data.createdAt) &&
+                      isReasonableSize(request.resource.data);
+    }
+
+    // ============================================================
+    // AI CHATS (ChronoX AI Chat History)
+    // ============================================================
+    match /aiChats/{chatId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update: if isAuthenticated() && uid() == resource.data.userId;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // TERMINAL COMMANDS
+    // ============================================================
+    match /terminalCommands/{cmdId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+      allow update: if false;
+    }
+
+    // ============================================================
+    // TOKEN STATISTICS
+    // ============================================================
+    match /tokenStatistics/{statId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // MAINTENANCE
+    // ============================================================
+    match /maintenance/{maintenanceId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // FEATURE FLAGS
+    // ============================================================
+    match /featureFlags/{flagId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // RATE LIMITS
+    // ============================================================
+    match /rateLimits/{limitId} {
+      allow read, write: if isAuthenticated() && request.resource.data.userId == uid();
+    }
+
+    // ============================================================
+    // USER SESSIONS
+    // ============================================================
+    match /userSessions/{sessionId} {
+      allow read, write: if isAuthenticated() && request.resource.data.userId == uid();
+    }
+
+    // ============================================================
+    // DEVICE TOKENS
+    // ============================================================
+    match /deviceTokens/{tokenId} {
+      allow read, write: if isAuthenticated() && request.resource.data.userId == uid();
+    }
+
+    // ============================================================
+    // EMOJI REACTIONS
+    // ============================================================
+    match /emojiReactions/{reactionId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() == resource.data.userId;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // MESSAGE THREADS
+    // ============================================================
+    match /messageThreads/{threadId} {
+      allow create: if isAuthenticated() && uid() in request.resource.data.participants;
+      allow read: if isAuthenticated() && uid() in resource.data.participants;
+      allow update: if isAuthenticated() && uid() in resource.data.participants;
+      allow delete: if isAuthenticated() && uid() in resource.data.participants;
+    }
+
+    // ============================================================
+    // GROUP POLLS
+    // ============================================================
+    match /groupPolls/{pollId} {
+      allow create: if isAuthenticated() && isGroupMember(request.resource.data.groupId);
+      allow read: if isAuthenticated() && isGroupMember(resource.data.groupId);
+      allow update: if isAuthenticated() && uid() == resource.data.createdBy;
+      allow delete: if isAuthenticated() && (uid() == resource.data.createdBy || isGroupAdmin(resource.data.groupId));
+    }
+
+    // ============================================================
+    // POLL VOTES
+    // ============================================================
+    match /pollVotes/{voteId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update: if isAuthenticated() && uid() == resource.data.userId;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // GROUP EVENTS
+    // ============================================================
+    match /groupEvents/{eventId} {
+      allow create: if isAuthenticated() && isGroupMember(request.resource.data.groupId);
+      allow read: if isAuthenticated() && isGroupMember(resource.data.groupId);
+      allow update: if isAuthenticated() && uid() == resource.data.createdBy;
+      allow delete: if isAuthenticated() && (uid() == resource.data.createdBy || isGroupAdmin(resource.data.groupId));
+    }
+
+    // ============================================================
+    // EVENT ATTENDEES
+    // ============================================================
+    match /eventAttendees/{attendeeId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update: if isAuthenticated() && uid() == resource.data.userId;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // GROUP ANNOUNCEMENTS
+    // ============================================================
+    match /groupAnnouncements/{announcementId} {
+      allow create: if isAuthenticated() && isGroupAdmin(request.resource.data.groupId);
+      allow read: if isAuthenticated() && isGroupMember(resource.data.groupId);
+      allow update, delete: if isAuthenticated() && uid() == resource.data.createdBy;
+    }
+
+    // ============================================================
+    // USER ACHIEVEMENTS
+    // ============================================================
+    match /userAchievements/{achievementId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // LEADERBOARDS
+    // ============================================================
+    match /leaderboards/{leaderboardId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // USER STATS
+    // ============================================================
+    match /userStats/{uid} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // GROUP STATS
+    // ============================================================
+    match /groupStats/{groupId} {
+      allow read: if isGroupMember(groupId);
+      allow write: if isGroupAdmin(groupId);
+    }
+
+    // ============================================================
+    // SYSTEM STATS
+    // ============================================================
+    match /systemStats/{statId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // ERROR LOGS
+    // ============================================================
+    match /errorLogs/{errorId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // DEBUG LOGS
+    // ============================================================
+    match /debugLogs/{debugId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // PERFORMANCE METRICS
+    // ============================================================
+    match /performanceMetrics/{metricId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // API USAGE LOGS
+    // ============================================================
+    match /apiUsageLogs/{logId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // SECURITY AUDIT LOGS
+    // ============================================================
+    match /securityAuditLogs/{auditId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // USER FEEDBACK
+    // ============================================================
+    match /userFeedback/{feedbackId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read, update, delete: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // SUPPORT TICKETS
+    // ============================================================
+    match /supportTickets/{ticketId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.userId || isSuperAdmin());
+      allow update: if isAuthenticated() && (uid() == resource.data.userId || isSuperAdmin());
+      allow delete: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // BETA FEATURES
+    // ============================================================
+    match /betaFeatures/{featureId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // EXPERIMENTAL FEATURES
+    // ============================================================
+    match /experimentalFeatures/{featureId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // A/B TESTING
+    // ============================================================
+    match /abTesting/{testId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // USER PREFERENCES
+    // ============================================================
+    match /userPreferences/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // GROUP PREFERENCES
+    // ============================================================
+    match /groupPreferences/{groupId} {
+      allow read: if isGroupMember(groupId);
+      allow write: if isGroupAdmin(groupId);
+    }
+
+    // ============================================================
+    // THEME SETTINGS
+    // ============================================================
+    match /themeSettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // NOTIFICATION SETTINGS
+    // ============================================================
+    match /notificationSettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // PRIVACY SETTINGS
+    // ============================================================
+    match /privacySettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // SECURITY SETTINGS
+    // ============================================================
+    match /securitySettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // ACCOUNT SETTINGS
+    // ============================================================
+    match /accountSettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // PROFILE SETTINGS
+    // ============================================================
+    match /profileSettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // CHAT SETTINGS
+    // ============================================================
+    match /chatSettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // MEDIA SETTINGS
+    // ============================================================
+    match /mediaSettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // CALL SETTINGS
+    // ============================================================
+
+    // ============================================================
+    // CALL SETTINGS
+    // ============================================================
+    match /callSettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // GROUP SETTINGS
+    // ============================================================
+    match /groupSettings/{groupId} {
+      allow read: if isGroupMember(groupId);
+      allow write: if isGroupAdmin(groupId);
+    }
+
+    // ============================================================
+    // MARKETPLACE SETTINGS
+    // ============================================================
+    match /marketplaceSettings/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // PAYMENT HISTORY
+    // ============================================================
+    match /paymentHistory/{paymentId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // TOKEN GIFTS
+    // ============================================================
+    match /tokenGifts/{giftId} {
+      allow create: if isAuthenticated() && request.resource.data.senderId == uid();
+      allow read: if isAuthenticated() && (resource.data.senderId == uid() || resource.data.recipientId == uid() || isSuperAdmin());
+      allow update: if isAuthenticated() && (resource.data.senderId == uid() || resource.data.recipientId == uid() || isSuperAdmin());
+      allow delete: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // TOKEN TRANSACTIONS
+    // ============================================================
+    match /tokenTransactions/{transactionId} {
+      // Create: User can log their own transactions
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == uid() &&
+                       hasRequiredFields(request.resource.data, ['userId', 'amount', 'type', 'timestamp', 'status']) &&
+                       isNonNegativeInt(request.resource.data.amount) &&
+                       request.resource.data.type in ['purchase', 'gift', 'reward', 'refund', 'withdrawal'] &&
+                       request.resource.data.status in ['pending', 'completed', 'failed'] &&
+                       isValidTimestamp(request.resource.data.timestamp) &&
+                       exists(/databases/{database}/documents/users/$(uid()));
+      
+      // Read: User can view their own, super admin can view all
+      allow read: if isAuthenticated() && 
+                     (uid() == resource.data.userId || isSuperAdmin());
+      
+      // Update: Only super admin can update transaction status
+      allow update: if isSuperAdmin() &&
+                       !('userId' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('amount' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('type' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      // Delete: Never allow deletion of transaction records
+      allow delete: if false;
+    }
+
+    // ============================================================
+    // TOKEN BALANCES (User wallet balance)
+    // ============================================================
+    match /tokenBalances/{userId} {
+      // Read: User can view their own balance, super admin can view all
+      allow read: if isAuthenticated() && 
+                     (uid() == userId || isSuperAdmin()) &&
+                     exists(/databases/{database}/documents/users/$(userId));
+      
+      // Create: Only user can create their own balance
+      allow create: if isAuthenticated() && 
+                       uid() == userId &&
+                       hasRequiredFields(request.resource.data, ['userId', 'balance', 'currency', 'updatedAt']) &&
+                       isNonNegativeInt(request.resource.data.balance) &&
+                       request.resource.data.currency in ['NEX_TOKEN', 'USD', 'EUR'] &&
+                       isValidTimestamp(request.resource.data.updatedAt);
+      
+      // Update: Only owner or admin can update balance
+      allow update: if isAuthenticated() && 
+                       (uid() == userId || isSuperAdmin()) &&
+                       !('userId' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('currency' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       isNonNegativeInt(request.resource.data.balance) &&
+                       isValidTimestamp(request.resource.data.updatedAt);
+      
+      // Delete: Never allow deletion of balance records
+      allow delete: if false;
+    }
+
+    // ============================================================
+    // PROMO CODES
+    // ============================================================
+    match /promoCodes/{codeId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // PROMO REDEMPTIONS (Track who used which promo)
+    // ============================================================
+    match /promoRedemptions/{redemptionId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.userId || isSuperAdmin());
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // TOKEN PACKAGES (Marketplace packs for sale)
+    // ============================================================
+    match /tokenPackages/{packageId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // ORDERS (Token package purchases)
+    // ============================================================
+    match /orders/{orderId} {
+      // Create: User can create their own orders
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == uid() &&
+                       hasRequiredFields(request.resource.data, ['userId', 'packageId', 'amount', 'status', 'createdAt']) &&
+                       isNonNegativeInt(request.resource.data.amount) &&
+                       request.resource.data.status in ['pending', 'completed', 'failed', 'cancelled'] &&
+                       isValidTimestamp(request.resource.data.createdAt) &&
+                       exists(/databases/{database}/documents/tokenPackages/$(request.resource.data.packageId));
+      
+      // Read: User can view their own orders, admin can view all
+      allow read: if isAuthenticated() && 
+                     (uid() == resource.data.userId || isSuperAdmin());
+      
+      // Update: User can cancel pending orders, admin can update status
+      allow update: if isAuthenticated() &&
+                       uid() == resource.data.userId &&
+                       !('userId' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('packageId' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('amount' in request.resource.data.diff(resource.data).affectedKeys());
+      
+      // Delete: Never allow deletion of order records
+      allow delete: if false;
+    }
+
+    // ============================================================
+    // BETTING
+    // ============================================================
+    match /bets/{betId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.userId || isSuperAdmin());
+      allow update: if isSuperAdmin();
+      allow delete: if false;
+    }
+
+    // ============================================================
+    // BETTING RESULTS
+    // ============================================================
+    match /bettingResults/{resultId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // USER BET HISTORY
+    // ============================================================
+    match /betHistory/{historyId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.userId || isSuperAdmin());
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // WALLET TRANSACTIONS
+    // ============================================================
+    match /walletTransactions/{walletId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.userId || isSuperAdmin());
+      allow update: if isSuperAdmin();
+      allow delete: if false;
+    }
+
+    // ============================================================
+    // SUBSCRIPTIONS
+    // ============================================================
+    match /subscriptions/{subscriptionId} {
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow write: if isAuthenticated() && request.resource.data.userId == uid();
+    }
+
+    // ============================================================
+    // PREMIUM FEATURES
+    // ============================================================
+    match /premiumFeatures/{featureId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // USER BADGES
+    // ============================================================
+    match /userBadges/{badgeId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // GROUP BADGES
+    // ============================================================
+    match /groupBadges/{badgeId} {
+      allow create: if isAuthenticated() && isGroupAdmin(request.resource.data.groupId);
+      allow read: if isAuthenticated() && isGroupMember(resource.data.groupId);
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // CHALLENGES
+    // ============================================================
+    match /challenges/{challengeId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // USER CHALLENGES
+    // ============================================================
+    match /userChallenges/{challengeId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update: if isAuthenticated() && uid() == resource.data.userId;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // GROUP CHALLENGES
+    // ============================================================
+    match /groupChallenges/{challengeId} {
+      allow create: if isAuthenticated() && isGroupMember(request.resource.data.groupId);
+      allow read: if isAuthenticated() && isGroupMember(resource.data.groupId);
+      allow update: if isAuthenticated() && uid() == resource.data.createdBy;
+      allow delete: if isAuthenticated() && uid() == resource.data.createdBy;
+    }
+
+    // ============================================================
+    // CLANS (Gaming Squads)
+    // ============================================================
+    match /clans/{clanId} {
+      allow create: if isAuthenticated() && request.resource.data.createdBy == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && (uid() in resource.data.leaders || uid() in resource.data.admins);
+      allow delete: if isAuthenticated() && uid() == resource.data.createdBy;
+    }
+
+    // ============================================================
+    // CLAN INVITES
+    // ============================================================
+    match /clanInvites/{inviteId} {
+      allow create: if isAuthenticated() && request.resource.data.invitedBy == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.userId || uid() == resource.data.invitedBy);
+      allow update: if isAuthenticated() && uid() == resource.data.userId;
+      allow delete: if isAuthenticated() && (uid() == resource.data.userId || uid() == resource.data.invitedBy);
+    }
+
+    // ============================================================
+    // GAMING CLIPS
+    // ============================================================
+    match /clips/{clipId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && (uid() == resource.data.userId || isSuperAdmin());
+      allow delete: if isAuthenticated() && (uid() == resource.data.userId || isSuperAdmin());
+    }
+
+    // ============================================================
+    // COMPETITIONS
+    // ============================================================
+    match /competitions/{competitionId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // TOURNAMENTS
+    // ============================================================
+    match /tournaments/{tournamentId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // GAMIFICATION
+    // ============================================================
+    match /gamification/{gamificationId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // REWARDS
+    // ============================================================
+    match /rewards/{rewardId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // USER LEVELS
+    // ============================================================
+    match /userLevels/{uid} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(uid);
+    }
+
+    // ============================================================
+    // USER PROGRESS
+    // ============================================================
+    match /userProgress/{progressId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update: if isAuthenticated() && uid() == resource.data.userId;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // USER STREAKS (Daily streak counting)
+    // ============================================================
+    match /userStreaks/{uid} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid &&
+                       hasRequiredFields(request.resource.data, ['userId', 'currentStreak', 'bestStreak', 'lastActiveAt', 'createdAt', 'updatedAt']) &&
+                       isValidStreakData(request.resource.data);
+
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+
+      allow update: if isAuthenticated() && uid() == resource.data.userId &&
+                       isValidStreakData(request.resource.data) &&
+                       !('userId' in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('createdAt' in request.resource.data.diff(resource.data).affectedKeys());
+
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // SOCIAL FEATURES
+    // ============================================================
+    match /socialFeatures/{featureId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // FRIEND REQUESTS
+    // ============================================================
+    match /friendRequests/{requestId} {
+      allow create: if isAuthenticated() && request.resource.data.from == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.from || uid() == resource.data.to);
+      allow update: if isAuthenticated() && uid() == resource.data.to;
+      allow delete: if isAuthenticated() && (uid() == resource.data.from || uid() == resource.data.to);
+    }
+
+    // ============================================================
+    // FRIENDS
+    // ============================================================
+    match /friends/{friendId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update: if isAuthenticated() && uid() == resource.data.userId;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // FOLLOWERS
+    // ============================================================
+    match /followers/{followId} {
+      allow create: if isAuthenticated() && request.resource.data.followerId == uid();
+      allow read: if isAuthenticated() && (uid() == resource.data.followerId || uid() == resource.data.followingId);
+      allow update: if false;
+      allow delete: if isAuthenticated() && uid() == resource.data.followerId;
+    }
+
+    // ============================================================
+    // SOCIAL POSTS
+    // ============================================================
+    match /socialPosts/{postId} {
+      allow create: if isAuthenticated() && request.resource.data.authorId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() == resource.data.authorId;
+      allow delete: if isAuthenticated() && uid() == resource.data.authorId;
+    }
+
+    // ============================================================
+    // POST LIKES
+    // ============================================================
+    match /postLikes/{likeId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated();
+      allow update: if false;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // POST COMMENTS
+    // ============================================================
+    match /postComments/{commentId} {
+      allow create: if isAuthenticated() && request.resource.data.authorId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() == resource.data.authorId;
+      allow delete: if isAuthenticated() && uid() == resource.data.authorId;
+    }
+
+    // ============================================================
+    // STORIES
+    // ============================================================
+    match /stories/{storyId} {
+      allow create: if isAuthenticated() && request.resource.data.authorId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() == resource.data.authorId;
+      allow delete: if isAuthenticated() && uid() == resource.data.authorId;
+    }
+
+    // ============================================================
+    // STORY VIEWS
+    // ============================================================
+    match /storyViews/{viewId} {
+      allow create: if isAuthenticated() && request.resource.data.viewerId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.viewerId;
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // LIVE STREAMS
+    // ============================================================
+    match /liveStreams/{streamId} {
+      allow create: if isAuthenticated() && request.resource.data.streamerId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() == resource.data.streamerId;
+      allow delete: if isAuthenticated() && uid() == resource.data.streamerId;
+    }
+
+    // ============================================================
+    // STREAM VIEWERS
+    // ============================================================
+    match /streamViewers/{viewerId} {
+      allow create: if isAuthenticated() && request.resource.data.viewerId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.viewerId;
+      allow update: if isAuthenticated() && uid() == resource.data.viewerId;
+      allow delete: if isAuthenticated() && uid() == resource.data.viewerId;
+    }
+
+    // ============================================================
+    // STREAM CHAT
+    // ============================================================
+    match /streamChat/{messageId} {
+      allow create: if isAuthenticated() && request.resource.data.senderId == uid();
+      allow read: if isAuthenticated();
+      allow update: if false;
+      allow delete: if isAuthenticated() && uid() == resource.data.senderId;
+    }
+
+    // ============================================================
+    // VIDEOS
+    // ============================================================
+    match /videos/{videoId} {
+      allow create: if isAuthenticated() && request.resource.data.uploaderId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() == resource.data.uploaderId;
+      allow delete: if isAuthenticated() && uid() == resource.data.uploaderId;
+    }
+
+    // ============================================================
+    // VIDEO COMMENTS
+    // ============================================================
+    match /videoComments/{commentId} {
+      allow create: if isAuthenticated() && request.resource.data.authorId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() == resource.data.authorId;
+      allow delete: if isAuthenticated() && uid() == resource.data.authorId;
+    }
+
+    // ============================================================
+    // VIDEO LIKES
+    // ============================================================
+    match /videoLikes/{likeId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated();
+      allow update: if false;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    // ============================================================
+    // PLAYLISTS
+    // ============================================================
+    match /playlists/{playlistId} {
+      allow create: if isAuthenticated() && request.resource.data.creatorId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() == resource.data.creatorId;
+      allow delete: if isAuthenticated() && uid() == resource.data.creatorId;
+    }
+
+    // ============================================================
+    // PLAYLIST VIDEOS
+    // ============================================================
+    match /playlistVideos/{videoId} {
+      allow create: if isAuthenticated() && request.resource.data.addedBy == uid();
+      allow read: if isAuthenticated();
+      allow update: if false;
+      allow delete: if isAuthenticated() && uid() == resource.data.addedBy;
+    }
+
+    // ============================================================
+    // CONTENT MODERATION
+    // ============================================================
+    match /contentModeration/{moderationId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // SPAM REPORTS
+    // ============================================================
+    match /spamReports/{reportId} {
+      allow create: if isAuthenticated() && request.resource.data.reporterId == uid();
+      allow read, update, delete: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // CONTENT FILTERS
+    // ============================================================
+    match /contentFilters/{filterId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // USER VERIFICATION
+    // ============================================================
+    match /userVerification/{verificationId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // TRUST SCORES
+    // ============================================================
+    match /trustScores/{uid} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // ============================================================
+    // REPUTATION
+    // ============================================================
+    match /reputation/{reputationId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() && uid() == resource.data.userId;
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // DEFAULT DENY
+    // ============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+  }
+}
