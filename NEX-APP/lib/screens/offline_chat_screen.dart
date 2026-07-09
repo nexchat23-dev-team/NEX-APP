@@ -56,7 +56,9 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
       if (!mounted) return;
       setState(() {
         _transferProgress = progress;
-        _transferLabel = progress > 0 && progress < 1 ? 'Transferring ${ (progress * 100).toStringAsFixed(0) }%' : '';
+        _transferLabel = progress > 0 && progress < 1
+            ? 'Transferring ${(progress * 100).toStringAsFixed(0)}%'
+            : '';
       });
     });
     _initializeNearby();
@@ -68,7 +70,8 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
   Future<void> _initializeNearby() async {
     _permissionsGranted = await _requestPermissions();
     if (_permissionsGranted) {
-      _advertising = await _bluetoothService.startAdvertising('NEXCHAT_${DateTime.now().millisecondsSinceEpoch}');
+      _advertising = await _bluetoothService
+          .startAdvertising('NEXCHAT_${DateTime.now().millisecondsSinceEpoch}');
     }
     setState(() {});
   }
@@ -83,7 +86,8 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
       Permission.storage,
     ].request();
 
-    return statuses.values.every((status) => status.isGranted || status.isLimited);
+    return statuses.values
+        .every((status) => status.isGranted || status.isLimited);
   }
 
   @override
@@ -154,7 +158,8 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
       }
     }
 
-    final started = await _bluetoothService.startAdvertising('NEXCHAT_${DateTime.now().millisecondsSinceEpoch}');
+    final started = await _bluetoothService
+        .startAdvertising('NEXCHAT_${DateTime.now().millisecondsSinceEpoch}');
     setState(() {
       _advertising = started;
     });
@@ -193,7 +198,8 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF101524),
-          title: const Text('Offline Chat Setup', style: TextStyle(color: Colors.white)),
+          title: const Text('Offline Chat Setup',
+              style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: ListBody(
               children: [
@@ -202,9 +208,13 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
                   style: TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 12),
-                const Text('1. Tap the Bluetooth icon to start or stop advertising.', style: TextStyle(color: Colors.white70)),
-                const Text('2. Tap Scan Devices to discover nearby peers.', style: TextStyle(color: Colors.white70)),
-                const Text('3. Connect, then send messages or files offline.', style: TextStyle(color: Colors.white70)),
+                const Text(
+                    '1. Tap the Bluetooth icon to start or stop advertising.',
+                    style: TextStyle(color: Colors.white70)),
+                const Text('2. Tap Scan Devices to discover nearby peers.',
+                    style: TextStyle(color: Colors.white70)),
+                const Text('3. Connect, then send messages or files offline.',
+                    style: TextStyle(color: Colors.white70)),
                 const SizedBox(height: 12),
                 if (!_permissionsGranted)
                   const Text(
@@ -217,7 +227,8 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close', style: TextStyle(color: Colors.white70)),
+              child:
+                  const Text('Close', style: TextStyle(color: Colors.white70)),
             ),
             if (!_permissionsGranted)
               TextButton(
@@ -238,7 +249,8 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
                     ),
                   );
                 },
-                child: const Text('Request Permissions', style: TextStyle(color: kNeonBlue)),
+                child: const Text('Request Permissions',
+                    style: TextStyle(color: kNeonBlue)),
               ),
           ],
         );
@@ -254,7 +266,8 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
   }
 
   Future<void> _sendFile() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.any, allowMultiple: false);
+    final result = await FilePicker.platform
+        .pickFiles(type: FileType.any, allowMultiple: false);
     if (result == null || result.files.isEmpty) return;
 
     final file = File(result.files.single.path!);
@@ -262,14 +275,17 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
   }
 
   Future<void> _showMessageActions(OfflineMessage message) async {
-    if (message.type != OfflineMessageType.file || message.filePath == null) return;
+    if (message.type != OfflineMessageType.file || message.filePath == null) {
+      return;
+    }
 
     await showDialog<void>(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF101524),
-          title: const Text('File received', style: TextStyle(color: Colors.white)),
+          title: const Text('File received',
+              style: TextStyle(color: Colors.white)),
           content: Text(
             'File saved to:\n${message.filePath}',
             style: const TextStyle(color: Colors.white70),
@@ -292,7 +308,8 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
         final devices = snapshot.data ?? [];
         if (devices.isEmpty) {
           return const Center(
-            child: Text('No devices found yet.', style: TextStyle(color: Colors.white54)),
+            child: Text('No devices found yet.',
+                style: TextStyle(color: Colors.white54)),
           );
         }
         return ListView.separated(
@@ -302,13 +319,24 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
             final device = devices[index];
             final isSelected = _selectedDevice?.id == device.id;
             return ListTile(
+              tileColor: const Color(0xFF111A33),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
               selected: isSelected,
-              selectedTileColor: const Color(0xFF1B2442),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              title: Text(device.name, style: const TextStyle(color: Colors.white)),
-              subtitle: Text(device.id, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              selectedTileColor: const Color(0xFF1F2E5A),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              title: Text(device.name,
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700)),
+              subtitle: Text(device.id,
+                  style: const TextStyle(color: Colors.white54, fontSize: 12)),
               trailing: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: kNeonPurple),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isSelected ? kNeonPurple : kNeonBlue,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
                 onPressed: _connected ? null : () => _connectToDevice(device),
                 child: Text(isSelected ? 'CONNECTED' : 'CONNECT'),
               ),
@@ -319,56 +347,109 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
     );
   }
 
+  Widget _buildStatusChip(
+      String label, Color backgroundColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              color: textColor, fontSize: 12, fontWeight: FontWeight.w600)),
+    );
+  }
+
   Widget _buildMessages() {
     if (_messages.isEmpty) {
       return const Center(
-        child: Text('No offline messages yet.', style: TextStyle(color: Colors.white54)),
+        child: Text('No offline messages yet.',
+            style: TextStyle(color: Colors.white60, fontSize: 14)),
       );
     }
     return ListView.separated(
       reverse: true,
       itemCount: _messages.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final message = _messages[index];
         final isSentByMe = message.sender == 'You';
-        final backgroundColor = isSentByMe ? kNeonPurple : const Color(0xFF1D1F32);
-        return Align(
-          alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
-          child: GestureDetector(
-            onTap: () => _showMessageActions(message),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              constraints: const BoxConstraints(maxWidth: 320),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (message.type == OfflineMessageType.file)
-                    Row(
-                      children: [
-                        const Icon(Icons.attach_file_rounded, color: Colors.white70, size: 16),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'File: ${message.fileName ?? 'unknown'}',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        final backgroundColor =
+            isSentByMe ? const Color(0xFF5B3EFF) : const Color(0xFF17213F);
+        final textColor = isSentByMe ? Colors.white : Colors.white70;
+        final bubbleRadius = BorderRadius.only(
+          topLeft: const Radius.circular(20),
+          topRight: const Radius.circular(20),
+          bottomLeft: Radius.circular(isSentByMe ? 20 : 4),
+          bottomRight: Radius.circular(isSentByMe ? 4 : 20),
+        );
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Align(
+            alignment:
+                isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => _showMessageActions(message),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: bubbleRadius,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                constraints: const BoxConstraints(maxWidth: 340),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (message.type == OfflineMessageType.file)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.attach_file_rounded,
+                              color: Colors.white70, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "File: ${message.fileName ?? 'unknown'}",
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700),
+                            ),
                           ),
+                        ],
+                      ),
+                    if (message.type == OfflineMessageType.file)
+                      const SizedBox(height: 10),
+                    Text(message.text,
+                        style: TextStyle(
+                            color: textColor, height: 1.35, fontSize: 14)),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          message.sender,
+                          style: const TextStyle(
+                              color: Colors.white38, fontSize: 11),
+                        ),
+                        Text(
+                          '${message.timestamp.hour.toString().padLeft(2, "0")}:${message.timestamp.minute.toString().padLeft(2, "0")}',
+                          style: const TextStyle(
+                              color: Colors.white30, fontSize: 11),
                         ),
                       ],
                     ),
-                  if (message.type == OfflineMessageType.file) const SizedBox(height: 8),
-                  Text(message.text, style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${message.timestamp.hour.toString().padLeft(2, '0')}:${message.timestamp.minute.toString().padLeft(2, '0')}',
-                    style: const TextStyle(color: Colors.white38, fontSize: 10),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -397,262 +478,337 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
         title: const Text('NEX Offline Chat'),
         actions: [
           IconButton(
-            icon: Icon(_discovering ? Icons.stop_circle_outlined : Icons.bluetooth_searching_rounded),
+            icon: Icon(_discovering
+                ? Icons.stop_circle_outlined
+                : Icons.bluetooth_searching_rounded),
             onPressed: _toggleDiscovery,
             tooltip: _discovering ? 'Stop scanning' : 'Scan for peers',
           ),
           IconButton(
-            icon: Icon(_advertising ? Icons.bluetooth_disabled : Icons.bluetooth_audio),
+            icon: Icon(_advertising
+                ? Icons.bluetooth_disabled
+                : Icons.bluetooth_audio),
             onPressed: _advertising ? _stopAdvertising : _startAdvertising,
             tooltip: _advertising ? 'Stop advertising' : 'Start advertising',
           ),
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            if (_showOnboardingBanner)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1B2442),
-                  borderRadius: BorderRadius.all(Radius.circular(16)),
-                  border: Border.fromBorderSide(BorderSide(color: Color(0x6600B8F4))),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Offline Chat Guide', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                          SizedBox(height: 8),
-                          Text(
-                            'Start advertising, scan for peers, connect, then send text or files offline.',
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white54),
-                      onPressed: _dismissOnboardingBanner,
-                      tooltip: 'Dismiss',
-                    ),
-                  ],
-                ),
-              ),
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF12182F),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _connected ? 'Connected to ${_selectedDevice?.name ?? _bluetoothService.connectedEndpointName ?? 'peer'}' : 'Disconnected',
-                          style: TextStyle(color: _connected ? kNeonGreen : Colors.white54, fontWeight: FontWeight.bold, fontSize: 26),
-                        ),
-                      ),
-                      if (_connected)
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: kNeonPurple),
-                          onPressed: _disconnectDevice,
-                          child: const Text('DISCONNECT'),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Peer: ${_selectedDevice?.name ?? _bluetoothService.connectedEndpointName ?? 'No peer selected'}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _permissionsGranted ? kNeonGreen : Colors.orangeAccent,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          _permissionsGranted ? 'Permissions granted' : 'Permissions required',
-                          style: const TextStyle(color: Colors.black, fontSize: 12),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _advertising ? kNeonBlue : Colors.white24,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          _advertising ? 'Advertising' : 'Not advertising',
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _discovering ? kNeonPurple : Colors.white24,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          _discovering ? 'Scanning' : 'Idle',
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
-                        ),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF11172B), Color(0xFF0A0E1D)],
+            ),
+          ),
+          child: Column(
+            children: [
+              if (_showOnboardingBanner)
+                Container(
+                  width: double.infinity,
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1B2745).withValues(alpha: 0.95),
+                    borderRadius: const BorderRadius.all(Radius.circular(22)),
+                    border: Border.all(color: const Color(0xFF2D4FD3)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Row(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Expanded(
-                        child: Text(
-                          'Tap the icons above to advertise or scan, then connect to a nearby device.',
-                          style: TextStyle(color: Colors.white60, fontSize: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Offline Chat Guide',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18)),
+                            SizedBox(height: 10),
+                            Text(
+                              'Enable Bluetooth, advertise your device, scan nearby peers, and send secure messages or files offline.',
+                              style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                  height: 1.4),
+                            ),
+                          ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.info_outline, color: Colors.white70),
-                        onPressed: _showSetupDialog,
-                        tooltip: 'Setup help',
+                        icon: const Icon(Icons.close, color: Colors.white60),
+                        onPressed: _dismissOnboardingBanner,
+                        tooltip: 'Dismiss',
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            if (_transferLabel.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                ),
+              Container(
+                width: double.infinity,
+                margin:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF192142),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFF24335D)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(_transferLabel, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                        Text('${(_transferProgress * 100).toStringAsFixed(0)}%', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        Expanded(
+                          child: Text(
+                            _connected
+                                ? 'Connected to ${_selectedDevice?.name ?? _bluetoothService.connectedEndpointName ?? 'peer'}'
+                                : 'Offline Mode',
+                            style: TextStyle(
+                                color: _connected ? kNeonGreen : Colors.white70,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 24),
+                          ),
+                        ),
+                        if (_connected)
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kNeonPurple,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18)),
+                            ),
+                            onPressed: _disconnectDevice,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 12),
+                              child: Text('Disconnect',
+                                  style: TextStyle(letterSpacing: 0.4)),
+                            ),
+                          ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: LinearProgressIndicator(
-                        value: _transferProgress,
-                        minHeight: 6,
-                        backgroundColor: const Color(0xFF0D1226),
-                        valueColor: const AlwaysStoppedAnimation<Color>(kNeonPurple),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Peer: ${_selectedDevice?.name ?? _bluetoothService.connectedEndpointName ?? 'No peer selected'}',
+                      style: const TextStyle(
+                          color: Colors.white60, fontSize: 13, height: 1.4),
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _buildStatusChip(
+                            _permissionsGranted
+                                ? 'Permissions granted'
+                                : 'Permissions required',
+                            _permissionsGranted
+                                ? kNeonGreen
+                                : Colors.orangeAccent,
+                            _permissionsGranted ? Colors.black : Colors.white),
+                        _buildStatusChip(
+                            _advertising ? 'Advertising' : 'Not advertising',
+                            _advertising ? kNeonBlue : const Color(0xFF2F3F5C),
+                            Colors.white),
+                        _buildStatusChip(
+                            _discovering ? 'Scanning' : 'Idle',
+                            _discovering
+                                ? kNeonPurple
+                                : const Color(0xFF2F3F5C),
+                            Colors.white),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Tap the Bluetooth controls to advertise or scan, then connect to a nearby device to share text and files.',
+                            style: TextStyle(
+                                color: Colors.white60,
+                                fontSize: 12,
+                                height: 1.4),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.info_outline,
+                              color: Colors.white70),
+                          onPressed: _showSetupDialog,
+                          tooltip: 'Setup help',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (_transferLabel.isNotEmpty)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_transferLabel,
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12)),
+                          Text(
+                              '${(_transferProgress * 100).toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: LinearProgressIndicator(
+                          value: _transferProgress,
+                          minHeight: 6,
+                          backgroundColor: const Color(0xFF0D1226),
+                          valueColor:
+                              const AlwaysStoppedAnimation<Color>(kNeonPurple),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Nearby devices',
+                        style: TextStyle(
+                            color: Color.fromRGBO(255, 255, 255, 0.95),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16213F),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        '$_nearbyDeviceCount devices',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12),
                       ),
                     ),
                   ],
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Nearby devices',
-                      style: TextStyle(color: Color.fromRGBO(255, 255, 255, 0.95), fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF16213F),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      '$_nearbyDeviceCount devices',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                  ),
-                ],
+              SizedBox(
+                height: 180,
+                child: _buildDeviceList(),
               ),
-            ),
-            SizedBox(
-              height: 180,
-              child: _buildDeviceList(),
-            ),
-            Expanded(
-              child: _buildMessages(),
-            ),
-            Container(
-              height: 180,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: const BoxDecoration(
-                color: Color(0xFF12182F),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              Expanded(
+                child: _buildMessages(),
               ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _messageController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'Type message or send file...',
-                            hintStyle: const TextStyle(color: Colors.white38),
-                            filled: true,
-                            fillColor: const Color(0xFF0D1226),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
+              Container(
+                height: 180,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF141C33),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _messageController,
+                            style: const TextStyle(
+                                color: Colors.white, height: 1.4),
+                            decoration: InputDecoration(
+                              hintText: 'Write a message or attach a file...',
+                              hintStyle: const TextStyle(color: Colors.white38),
+                              filled: true,
+                              fillColor: const Color(0xFF0E1530),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 18, vertical: 16),
                             ),
+                            minLines: 1,
+                            maxLines: 4,
                           ),
-                          minLines: 1,
-                          maxLines: 4,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: kNeonPurple,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        onPressed: _connected ? _sendText : null,
-                        child: const Icon(Icons.send_rounded, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.attach_file_rounded, color: Colors.white),
-                          label: const Text('Send File'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: kNeonBlue,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        const SizedBox(width: 12),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: kNeonPurple,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: kNeonPurple.withValues(alpha: 0.35),
+                                blurRadius: 18,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
                           ),
-                          onPressed: _connected ? _sendFile : null,
+                          child: IconButton(
+                            onPressed: _connected ? _sendText : null,
+                            icon: const Icon(Icons.send_rounded,
+                                color: Colors.white),
+                            tooltip: 'Send message',
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.attach_file_rounded,
+                                color: Colors.white),
+                            label: const Text('Send File',
+                                style: TextStyle(fontWeight: FontWeight.w700)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2056C4),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            onPressed: _connected ? _sendFile : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-          ],
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
       ),
       floatingActionButton: _discovering
@@ -663,7 +819,7 @@ class _OfflineChatScreenState extends State<OfflineChatScreen> {
               onPressed: _toggleDiscovery,
             )
           : FloatingActionButton.extended(
-              backgroundColor: kNeonBlue,
+              backgroundColor: const Color.fromARGB(255, 55, 117, 138),
               icon: const Icon(Icons.search_rounded),
               label: const Text('Scan Devices'),
               onPressed: _toggleDiscovery,

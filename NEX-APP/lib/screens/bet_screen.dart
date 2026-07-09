@@ -14,11 +14,15 @@ class BettingScreen extends StatefulWidget {
 }
 
 class _BetScreenState extends State<BettingScreen> {
-  final TextEditingController stakeController = TextEditingController(text: '1000');
+  final TextEditingController stakeController =
+      TextEditingController(text: '1000');
   final Random random = Random();
   String aviatorMessage = 'Select your stake and launch the flight. Good luck!';
-  String minesMessage = 'Start Mines and clear safe tiles without hitting a mine.';
-  String wheelMessage = 'Spin the wheel and multiply your stake for bonus tokens.';
+  String minesMessage =
+      'Start Mines and clear safe tiles without hitting a mine.';
+  String wheelMessage =
+      'Spin the wheel and multiply your stake for bonus tokens.';
+  String diceMessage = 'Roll the dice and beat the odds.';
   final List<double> wheelMultipliers = [0.0, 0.5, 1, 1.5, 2, 3, 5];
   bool minesActive = false;
   Set<int> minePositions = {};
@@ -26,7 +30,8 @@ class _BetScreenState extends State<BettingScreen> {
   int minesStake = 0;
 
   void placeAviatorBet(int balance) {
-    final stake = int.tryParse(stakeController.text.replaceAll(',', '').trim()) ?? 0;
+    final stake =
+        int.tryParse(stakeController.text.replaceAll(',', '').trim()) ?? 0;
     if (stake <= 0) {
       setState(() {
         aviatorMessage = 'Enter a valid stake amount.';
@@ -50,17 +55,20 @@ class _BetScreenState extends State<BettingScreen> {
     if (crashPoint >= cashOut) {
       tokenProvider.addTokens(payout);
       setState(() {
-        aviatorMessage = 'Aviator landed at x${crashPoint.toStringAsFixed(2)}. You cashed out at x${cashOut.toStringAsFixed(2)} and won ${formatBalanceDisplay(payout)} tokens!';
+        aviatorMessage =
+            'Aviator landed at x${crashPoint.toStringAsFixed(2)}. You cashed out at x${cashOut.toStringAsFixed(2)} and won ${formatBalanceDisplay(payout)} tokens!';
       });
     } else {
       setState(() {
-        aviatorMessage = 'Aviator crashed at x${crashPoint.toStringAsFixed(2)}. You lost ${formatBalanceDisplay(stake)} tokens.';
+        aviatorMessage =
+            'Aviator crashed at x${crashPoint.toStringAsFixed(2)}. You lost ${formatBalanceDisplay(stake)} tokens.';
       });
     }
   }
 
   void startMinesGame(int balance) {
-    final stake = int.tryParse(stakeController.text.replaceAll(',', '').trim()) ?? 0;
+    final stake =
+        int.tryParse(stakeController.text.replaceAll(',', '').trim()) ?? 0;
     if (stake <= 0) {
       setState(() {
         minesMessage = 'Enter a stake to play Mines.';
@@ -81,7 +89,8 @@ class _BetScreenState extends State<BettingScreen> {
     revealedCells.clear();
     minesActive = true;
     setState(() {
-      minesMessage = 'Mines started! Reveal 3 safe tiles without hitting a mine.';
+      minesMessage =
+          'Mines started! Reveal 3 safe tiles without hitting a mine.';
     });
   }
 
@@ -93,7 +102,8 @@ class _BetScreenState extends State<BettingScreen> {
       minesActive = false;
       tokenProvider.deductTokens(minesStake);
       setState(() {
-        minesMessage = 'Boom! Tile $index had a mine. You lost ${formatBalanceDisplay(minesStake)} tokens.';
+        minesMessage =
+            'Boom! Tile $index had a mine. You lost ${formatBalanceDisplay(minesStake)} tokens.';
       });
       return;
     }
@@ -104,7 +114,8 @@ class _BetScreenState extends State<BettingScreen> {
       final reward = (minesStake * 2.5).round();
       tokenProvider.addTokens(reward);
       setState(() {
-        minesMessage = 'You cleared 3 safe tiles and won ${formatBalanceDisplay(reward)} tokens!';
+        minesMessage =
+            'You cleared 3 safe tiles and won ${formatBalanceDisplay(reward)} tokens!';
       });
       return;
     }
@@ -115,7 +126,8 @@ class _BetScreenState extends State<BettingScreen> {
   }
 
   void spinWheel(int balance) {
-    final stake = int.tryParse(stakeController.text.replaceAll(',', '').trim()) ?? 0;
+    final stake =
+        int.tryParse(stakeController.text.replaceAll(',', '').trim()) ?? 0;
     if (stake <= 0) {
       setState(() {
         wheelMessage = 'Enter a valid stake amount to spin the wheel.';
@@ -131,7 +143,8 @@ class _BetScreenState extends State<BettingScreen> {
 
     final tokenProvider = Provider.of<TokenProvider>(context, listen: false);
     tokenProvider.deductTokens(stake);
-    final multiplier = wheelMultipliers[random.nextInt(wheelMultipliers.length)];
+    final multiplier =
+        wheelMultipliers[random.nextInt(wheelMultipliers.length)];
     final payout = (stake * multiplier).round();
     if (payout > 0) {
       tokenProvider.addTokens(payout);
@@ -139,20 +152,62 @@ class _BetScreenState extends State<BettingScreen> {
 
     setState(() {
       if (multiplier == 0) {
-        wheelMessage = 'Oh no! The wheel landed on 0x. You lost ${formatBalanceDisplay(stake)} tokens.';
+        wheelMessage =
+            'Oh no! The wheel landed on 0x. You lost ${formatBalanceDisplay(stake)} tokens.';
       } else {
-        wheelMessage = 'Great spin! You won ${formatBalanceDisplay(payout)} tokens at ${multiplier}x multiplier.';
+        wheelMessage =
+            'Great spin! You won ${formatBalanceDisplay(payout)} tokens at ${multiplier}x multiplier.';
       }
     });
   }
 
+  void rollDice(int balance) {
+    final stake =
+        int.tryParse(stakeController.text.replaceAll(',', '').trim()) ?? 0;
+    if (stake <= 0) {
+      setState(() {
+        diceMessage = 'Enter a valid stake to roll the dice.';
+      });
+      return;
+    }
+    if (stake > balance) {
+      setState(() {
+        diceMessage = 'Not enough tokens for that roll.';
+      });
+      return;
+    }
+
+    final tokenProvider = Provider.of<TokenProvider>(context, listen: false);
+    tokenProvider.deductTokens(stake);
+    final roll = random.nextInt(6) + 1;
+    final payout = (stake * (1 + roll / 4)).round();
+
+    if (roll >= 4) {
+      tokenProvider.addTokens(payout);
+      setState(() {
+        diceMessage =
+            'Dice rolled $roll. You won ${formatBalanceDisplay(payout)} tokens!';
+      });
+    } else {
+      setState(() {
+        diceMessage =
+            'Dice rolled $roll. You lost ${formatBalanceDisplay(stake)} tokens.';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final balance = Provider.of<TokenProvider>(context).balance;
+    final tokenProvider = Provider.of<TokenProvider>(context);
+    final balance = tokenProvider.isInitialized ? tokenProvider.balance : 0;
+    final balanceLabel = tokenProvider.isInitialized
+        ? formatBalanceDisplay(balance)
+        : 'Loading...';
     return Scaffold(
       backgroundColor: const Color(0xFF06101F),
       appBar: AppBar(
-        title: const Text('💰 Betting Arena', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+        title: const Text('💰 Betting Arena',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
         backgroundColor: const Color(0xFF0A1929),
         elevation: 2,
         centerTitle: true,
@@ -161,18 +216,23 @@ class _BetScreenState extends State<BettingScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: kNeonGreen.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.monetization_on, color: kNeonGreen, size: 18),
+                    const Icon(Icons.monetization_on,
+                        color: kNeonGreen, size: 18),
                     const SizedBox(width: 6),
                     Text(
-                      formatBalanceDisplay(balance),
-                      style: const TextStyle(color: kNeonGreen, fontWeight: FontWeight.bold, fontSize: 16),
+                      balanceLabel,
+                      style: const TextStyle(
+                          color: kNeonGreen,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16),
                     ),
                   ],
                 ),
@@ -205,18 +265,25 @@ class _BetScreenState extends State<BettingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('🎰 Neon Betting Arena', style: TextStyle(color: kNeonBlue, fontSize: 20, fontWeight: FontWeight.bold)),
+                    const Text('Neon Betting Arena',
+                        style: TextStyle(
+                            color: kNeonBlue,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    const Text('Test your luck and win amazing rewards', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    const Text('Test your luck and win amazing rewards',
+                        style: TextStyle(color: Colors.white54, fontSize: 12)),
                     const SizedBox(height: 20),
                     Row(
                       children: [
                         Expanded(
-                          child: _buildStatCard('💰', 'Balance', formatBalanceDisplay(balance), kNeonGreen),
+                          child: _buildStatCard(
+                              'Balance', 'Balance', balanceLabel, kNeonGreen),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildStatCard('🎯', 'Win Rate', '42%', kNeonBlue),
+                          child: _buildStatCard(
+                              'Win Rate', 'Win Rate', '42%', kNeonBlue),
                         ),
                       ],
                     ),
@@ -226,23 +293,34 @@ class _BetScreenState extends State<BettingScreen> {
               const SizedBox(height: 24),
 
               // Stake Input
-              const Text('Set Your Stake', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+              const Text('Set Your Stake',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0F1C2E),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: kNeonBlue.withValues(alpha: 0.3), width: 2),
+                  border: Border.all(
+                      color: kNeonBlue.withValues(alpha: 0.3), width: 2),
                 ),
                 child: TextField(
                   controller: stakeController,
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
                   decoration: const InputDecoration(
                     border: InputBorder.none,
-                    prefixIcon: Icon(Icons.attach_money, color: kNeonGreen, size: 24),
-                    prefixIconConstraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                    prefixIcon:
+                        Icon(Icons.attach_money, color: kNeonGreen, size: 24),
+                    prefixIconConstraints:
+                        BoxConstraints(minWidth: 40, minHeight: 40),
                     hintText: 'Enter amount',
                     hintStyle: TextStyle(color: Colors.white30),
                   ),
@@ -251,38 +329,46 @@ class _BetScreenState extends State<BettingScreen> {
               const SizedBox(height: 24),
 
               // Quick Stake Buttons
-              const Text('Quick Amounts', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+              const Text('Quick Amounts',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               Row(
                 children: ['500', '1000', '5000', '10000']
                     .map((amount) => Expanded(
-                      child: GestureDetector(
-                        onTap: () => stakeController.text = amount,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: kNeonBlue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: kNeonBlue.withValues(alpha: 0.3)),
+                          child: GestureDetector(
+                            onTap: () => stakeController.text = amount,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: kNeonBlue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: kNeonBlue.withValues(alpha: 0.3)),
+                              ),
+                              child: Text(
+                                amount,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    color: kNeonBlue,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12),
+                              ),
+                            ),
                           ),
-                          child: Text(
-                            amount,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: kNeonBlue, fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                        ),
-                      ),
-                    ))
+                        ))
                     .toList()
                     .expand((widget) => [widget, const SizedBox(width: 8)])
                     .toList()
-                    ..removeLast(),
+                  ..removeLast(),
               ),
               const SizedBox(height: 28),
 
               // Aviator Game
               _buildBettingGameCard(
-                title: '✈️ Aviator',
+                title: 'Aviator',
                 subtitle: 'Watch the multiplier climb or crash',
                 icon: Icons.trending_up,
                 color: kNeonGreen,
@@ -320,37 +406,52 @@ class _BetScreenState extends State<BettingScreen> {
                             color: Colors.red.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.warning, color: Colors.red, size: 24),
+                          child: const Icon(Icons.warning,
+                              color: Colors.red, size: 24),
                         ),
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('💣 Mines', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                              Text('Mines',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold)),
                               SizedBox(height: 2),
-                              Text('Find safe tiles and avoid mines', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                              Text('Find safe tiles and avoid mines',
+                                  style: TextStyle(
+                                      color: Colors.white54, fontSize: 12)),
                             ],
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.red.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text('High Risk', style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold)),
+                          child: const Text('High Risk',
+                              style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Text(minesMessage, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                    Text(minesMessage,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 13)),
                     const SizedBox(height: 16),
                     GridView.builder(
                       itemCount: 6,
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
@@ -371,14 +472,25 @@ class _BetScreenState extends State<BettingScreen> {
                               color: color,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: revealed ? (hasMine ? Colors.red : kNeonGreen) : Colors.white24,
+                                color: revealed
+                                    ? (hasMine ? Colors.red : kNeonGreen)
+                                    : Colors.white24,
                                 width: 2,
                               ),
                             ),
                             child: Center(
                               child: revealed
-                                  ? Icon(hasMine ? Icons.warning : Icons.check_circle, color: hasMine ? Colors.red : kNeonGreen, size: 28)
-                                  : const Text('?', style: TextStyle(color: Colors.white54, fontSize: 24, fontWeight: FontWeight.bold)),
+                                  ? Icon(
+                                      hasMine
+                                          ? Icons.warning
+                                          : Icons.check_circle,
+                                      color: hasMine ? Colors.red : kNeonGreen,
+                                      size: 28)
+                                  : const Text('?',
+                                      style: TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold)),
                             ),
                           ),
                         );
@@ -393,7 +505,8 @@ class _BetScreenState extends State<BettingScreen> {
                         backgroundColor: Colors.red,
                         foregroundColor: Colors.white,
                         minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ],
@@ -412,6 +525,18 @@ class _BetScreenState extends State<BettingScreen> {
                 buttonText: 'Spin the Wheel',
                 multiplier: '3.50x',
                 winChance: '50%',
+              ),
+              const SizedBox(height: 16),
+              _buildBettingGameCard(
+                title: '🎲 Turbo Dice',
+                subtitle: 'Roll high and beat the system',
+                icon: Icons.casino,
+                color: kNeonGreen,
+                onTap: () => rollDice(balance),
+                message: diceMessage,
+                buttonText: 'Roll Dice',
+                multiplier: '2.25x',
+                winChance: '48%',
               ),
               const SizedBox(height: 20),
             ],
@@ -434,9 +559,12 @@ class _BetScreenState extends State<BettingScreen> {
         children: [
           Text(emoji, style: const TextStyle(fontSize: 20)),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+          Text(label,
+              style: const TextStyle(color: Colors.white54, fontSize: 11)),
           const SizedBox(height: 4),
-          Text(value, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(value,
+              style: TextStyle(
+                  color: color, fontSize: 16, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -485,24 +613,37 @@ class _BetScreenState extends State<BettingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(title,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 12)),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(multiplier, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(multiplier,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
                   const SizedBox(height: 2),
-                  const Text('avg payout', style: TextStyle(color: Colors.white30, fontSize: 10)),
+                  const Text('avg payout',
+                      style: TextStyle(color: Colors.white30, fontSize: 10)),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(message, style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5)),
+          Text(message,
+              style: const TextStyle(
+                  color: Colors.white70, fontSize: 13, height: 1.5)),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -515,10 +656,20 @@ class _BetScreenState extends State<BettingScreen> {
               children: [
                 Icon(Icons.trending_up, color: color, size: 14),
                 const SizedBox(width: 6),
-                Text('Win chance: $winChance', style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+                Text('Win chance: $winChance',
+                    style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold)),
               ],
             ),
           ),
+          const SizedBox(height: 8),
+          Text('Potential payout: stake × $multiplier',
+              style: const TextStyle(
+                  color: Colors.white38,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500)),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: onTap,
@@ -528,7 +679,8 @@ class _BetScreenState extends State<BettingScreen> {
               backgroundColor: color,
               foregroundColor: Colors.black,
               minimumSize: const Size.fromHeight(48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               elevation: 4,
             ),
           ),
@@ -537,4 +689,3 @@ class _BetScreenState extends State<BettingScreen> {
     );
   }
 }
-

@@ -53,7 +53,8 @@ class OfflineBluetoothService {
   Stream<List<Endpoint>> get endpointsStream => _endpointsController.stream;
   Stream<OfflineMessage> get messageStream => _messagesController.stream;
   Stream<bool> get isConnectedStream => _connectionController.stream;
-  Stream<double> get transferProgressStream => _transferProgressController.stream;
+  Stream<double> get transferProgressStream =>
+      _transferProgressController.stream;
   String? get connectedEndpointName => _connectedEndpointName;
 
   Future<bool> startAdvertising(String userName) async {
@@ -159,7 +160,8 @@ class OfflineBluetoothService {
 
   Future<void> sendText(String text) async {
     if (_connectedEndpointId == null) return;
-    await Nearby().sendBytesPayload(_connectedEndpointId!, Uint8List.fromList(utf8.encode(text)));
+    await Nearby().sendBytesPayload(
+        _connectedEndpointId!, Uint8List.fromList(utf8.encode(text)));
     _messagesController.add(OfflineMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       sender: 'You',
@@ -173,8 +175,10 @@ class OfflineBluetoothService {
     if (_connectedEndpointId == null) return;
     final file = File(filePath);
     final fileName = file.uri.pathSegments.last;
-    final payloadId = await Nearby().sendFilePayload(_connectedEndpointId!, filePath);
-    await Nearby().sendBytesPayload(_connectedEndpointId!, Uint8List.fromList(utf8.encode('FILE_META:$payloadId:$fileName')));
+    final payloadId =
+        await Nearby().sendFilePayload(_connectedEndpointId!, filePath);
+    await Nearby().sendBytesPayload(_connectedEndpointId!,
+        Uint8List.fromList(utf8.encode('FILE_META:$payloadId:$fileName')));
     _messagesController.add(OfflineMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       sender: 'You',
@@ -224,15 +228,20 @@ class OfflineBluetoothService {
     }
   }
 
-  Future<void> _onPayloadTransferUpdate(String endpointId, PayloadTransferUpdate update) async {
+  Future<void> _onPayloadTransferUpdate(
+      String endpointId, PayloadTransferUpdate update) async {
     if (update.status == PayloadStatus.IN_PROGRESS) {
-      final progress = update.totalBytes > 0 ? update.bytesTransferred / update.totalBytes : 0.0;
+      final progress = update.totalBytes > 0
+          ? update.bytesTransferred / update.totalBytes
+          : 0.0;
       _transferProgressController.add(progress.clamp(0.0, 1.0));
     }
 
-    if (update.status == PayloadStatus.SUCCESS && _incomingFilePaths.containsKey(update.id)) {
+    if (update.status == PayloadStatus.SUCCESS &&
+        _incomingFilePaths.containsKey(update.id)) {
       final sourcePath = _incomingFilePaths.remove(update.id)!;
-      final fileName = _incomingFileNames.remove(update.id) ?? 'received_${update.id}';
+      final fileName =
+          _incomingFileNames.remove(update.id) ?? 'received_${update.id}';
       try {
         final directory = await getApplicationDocumentsDirectory();
         final targetPath = '${directory.path}/$fileName';
@@ -255,7 +264,8 @@ class OfflineBluetoothService {
       }
     }
 
-    if (update.status == PayloadStatus.FAILURE || update.status == PayloadStatus.CANCELED) {
+    if (update.status == PayloadStatus.FAILURE ||
+        update.status == PayloadStatus.CANCELED) {
       _transferProgressController.add(0.0);
     }
   }

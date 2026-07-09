@@ -1,10 +1,16 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../utils/constants.dart';
+
+import '../screens/call_screen.dart';
+import '../screens/user_search_screen.dart';
 import '../services/call_service.dart';
+import '../services/supabase_service.dart';
+import '../utils/constants.dart';
 
 class CallsScreen extends StatefulWidget {
   static const routeName = '/calls';
+
   const CallsScreen({super.key});
 
   @override
@@ -14,166 +20,331 @@ class CallsScreen extends StatefulWidget {
 class _CallsScreenState extends State<CallsScreen> {
   final CallService _callService = CallService();
 
-  // FIX: Helper for the Call UI Buttons
-  Widget _buildCallAction(IconData icon, Color color, VoidCallback onTap) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+  void _openCallScreen(String recipientId, String recipientName, bool isVideo) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CallScreen(
+          receiverId: recipientId,
+          receiverName: recipientName,
+          isVideo: isVideo,
+        ),
       ),
-      child: IconButton(
-        icon: Icon(icon, color: color, size: 20),
-        onPressed: onTap,
-      ),
-    );
-  }
-
-  void _startCall(BuildContext context, String recipientId, String recipientName, bool isVideo) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _CallScreen(callerName: recipientName, isVideo: isVideo),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF070B14),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: const Color(0xFF0A111F),
-        title: const Text(
-          'COMMUNICATIONS',
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 16),
-        ),
-        actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.search_rounded, color: kNeonBlue)),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert_rounded, color: kNeonBlue)),
-        ],
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _callService.getCallHistory(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: kNeonGreen, strokeWidth: 2));
-          }
-          if (snapshot.hasError) {
-            return const Center(child: Text('COMM LINK ERROR', style: TextStyle(color: Colors.redAccent)));
-          }
-
-          final calls = snapshot.data?.docs ?? [];
-          if (calls.isEmpty) return _buildEmptyCalls(context);
-
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            itemCount: calls.length,
-            itemBuilder: (context, index) {
-              final callData = calls[index].data() as Map<String, dynamic>;
-              final callerId = callData['callerId'] as String?;
-              final recipientId = callData['recipientId'] as String?;
-              final isMissed = callData['status'] == 'missed';
-              final createdAt = callData['createdAt'] as Timestamp?;
-
-              return FutureBuilder<Map<String, String>>(
-                future: _getCallerInfo(callerId == _callService.currentUserId ? recipientId : callerId),
-                builder: (context, userSnapshot) {
-                  final callerName = userSnapshot.data?['name'] ?? 'Loading...';
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0D1E36).withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                    ),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: isMissed ? Colors.red : kNeonGreen,
-                        child: Text(callerName[0].toUpperCase(), style: const TextStyle(color: Colors.white)),
+      backgroundColor: const Color(0xFF050816),
+      body: Stack(
+        children: [
+          Positioned.fill(child: CustomPaint(painter: _CallsBackgroundPainter())),
+          Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              elevation: 0,
+              automaticallyImplyLeading: false,
+              backgroundColor: Colors.transparent,
+              titleSpacing: 0,
+              title: Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(Icons.phone_in_talk_rounded, color: kNeonBlue, size: 20),
+                        ),
                       ),
-                      title: Text(callerName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      subtitle: Text(createdAt != null ? _formatCallTime(createdAt.toDate()) : 'Now', style: const TextStyle(color: Colors.white54)),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildCallAction(Icons.call, kNeonGreen, () => _startCall(context, recipientId ?? '', callerName, false)),
-                          const SizedBox(width: 8),
-                          _buildCallAction(Icons.videocam, kNeonBlue, () => _startCall(context, recipientId ?? '', callerName, true)),
+                          Text('CALL CENTER', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.4)),
+                          Text('SECURE VOICE & VIDEO', style: TextStyle(color: kNeonBlue, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                         ],
                       ),
                     ),
-                  );
-                },
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: kNeonGreen,
-        onPressed: () => _showNewCallDialog(context),
-        child: const Icon(Icons.add_ic_call_rounded, color: Colors.black),
-      ),
-    );
-  }
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back_ios_new, color: kNeonBlue, size: 18),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserSearchScreen())),
+                          icon: const Icon(Icons.person_add_alt_1_rounded, color: kNeonBlue),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            body: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _callService.getCallHistory(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: kNeonGreen, strokeWidth: 2));
+                }
 
-  // --- Helper Methods inside _CallsScreenState ---
+                if (snapshot.hasError) {
+                  return const Center(child: Text('Unable to load your call history.', style: TextStyle(color: Colors.redAccent)));
+                }
 
-  Widget _buildEmptyCalls(BuildContext context) {
-    return const Center(child: Text('No calls logged.', style: TextStyle(color: Colors.white54)));
-  }
+                final calls = snapshot.data ?? [];
+                if (calls.isEmpty) {
+                  return _buildEmptyCalls();
+                }
 
-  void _showNewCallDialog(BuildContext context) {
-    // [Dialog logic remains same but ensuring it's a method, not a class]
-  }
+                final totalCalls = calls.length;
+                final missedCalls = calls.where((call) {
+                  final status = (call['status'] as String?)?.toLowerCase() ?? '';
+                  return status == 'missed' || status == 'rejected';
+                }).length;
+                final activeCalls = calls.where((call) {
+                  final status = (call['status'] as String?)?.toLowerCase() ?? '';
+                  return status == 'pending' || status == 'active';
+                }).length;
 
-  String _formatCallTime(DateTime date) {
-    return "${date.hour}:${date.minute}";
-  }
-
-  Future<Map<String, String>> _getCallerInfo(String? userId) async {
-    if (userId == null) return {'name': 'Unknown'};
-    final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-    return {'name': doc.data()?['name'] ?? 'User'};
-  }
-} // <--- THIS BRACE CLOSES _CallsScreenState
-
-// --- SEPARATE CLASS (Outside _CallsScreenState) ---
-
-class _CallScreen extends StatefulWidget {
-  final String callerName;
-  final bool isVideo;
-
-  const _CallScreen({required this.callerName, required this.isVideo});
-
-  @override
-  State<_CallScreen> createState() => _CallScreenState();
-}
-
-class _CallScreenState extends State<_CallScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.75,
-      decoration: const BoxDecoration(
-        color: Color(0xFF070B14),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.person, size: 80, color: Colors.white24),
-          const SizedBox(height: 20),
-          Text(widget.callerName, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 40),
-          IconButton(
-            icon: const Icon(Icons.call_end, color: Colors.red, size: 40),
-            onPressed: () => Navigator.pop(context),
-          )
+                return CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8), child: _buildHeaderCard())),
+                    SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: _buildSummaryPanel(totalCalls, missedCalls, activeCalls))),
+                    const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 0), child: Text('Recent call activity', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700)))),
+                    SliverList(delegate: SliverChildBuilderDelegate((context, index) => Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 0), child: _buildCallHistoryItem(calls[index])), childCount: calls.length)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  ],
+                );
+              },
+            ),
+            floatingActionButton: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: FloatingActionButton.extended(
+                  backgroundColor: kNeonGreen.withValues(alpha: 0.9),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserSearchScreen())),
+                  icon: const Icon(Icons.add_ic_call_rounded, color: Colors.black),
+                  label: const Text('New call', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
+
+  Widget _buildSummaryPanel(int totalCalls, int missedCalls, int activeCalls) {
+    return Row(children: [Expanded(child: _buildStatChip('Total', totalCalls.toString(), kNeonBlue)), const SizedBox(width: 10), Expanded(child: _buildStatChip('Missed', missedCalls.toString(), Colors.redAccent)), const SizedBox(width: 10), Expanded(child: _buildStatChip('Live', activeCalls.toString(), kNeonGreen))]);
+  }
+
+  Widget _buildStatChip(String label, String value, Color color) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF10172E).withValues(alpha: 0.74),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: color.withValues(alpha: 0.16)),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)), const SizedBox(height: 6), Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20))]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCallHistoryItem(Map<String, dynamic> callData) {
+    final callerId = callData['callerId'] as String?;
+    final receiverId = callData['receiverId'] as String? ?? callData['recipientId'] as String?;
+    final currentUserId = _callService.currentUserId;
+    final otherUserId = currentUserId == callerId ? receiverId : callerId;
+    final status = (callData['status'] as String?)?.toLowerCase() ?? 'pending';
+    final isMissed = status == 'rejected' || status == 'missed';
+    final duration = (callData['duration'] as int?) ?? 0;
+    final isVideo = callData['isVideo'] == true || callData['isVideo']?.toString() == 'true';
+    final callType = isVideo ? 'Video call' : 'Voice call';
+    final time = _parseTimestamp(callData['createdAt'] ?? callData['timestamp']);
+    final subtitleItems = <String>[];
+    if (time != null) subtitleItems.add(_formatCallTime(time));
+    if (duration > 0) subtitleItems.add('${duration ~/ 60}m ${duration % 60}s');
+    subtitleItems.add(callType);
+
+    return FutureBuilder<Map<String, String>>(
+      future: _getCallerInfo(otherUserId),
+      builder: (context, userSnapshot) {
+        final displayName = userSnapshot.data?['name']?.isNotEmpty == true ? userSnapshot.data!['name']! : 'Unknown';
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10172E).withValues(alpha: 0.74),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    CircleAvatar(radius: 26, backgroundColor: isMissed ? Colors.redAccent : kNeonBlue, child: Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 20))),
+                    const SizedBox(width: 14),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(displayName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)), const SizedBox(height: 6), Text(subtitleItems.join(' • '), style: const TextStyle(color: Colors.white54, fontSize: 12))])),
+                    const SizedBox(width: 8),
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: isMissed ? Colors.redAccent.withValues(alpha: 0.14) : kNeonGreen.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)), child: Text(status.toUpperCase(), style: TextStyle(color: isMissed ? Colors.redAccent : kNeonGreen, fontWeight: FontWeight.w900, fontSize: 11))),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: InkWell(onTap: otherUserId == null ? null : () => _openCallScreen(otherUserId, displayName, false), borderRadius: BorderRadius.circular(14), child: Container(height: 44, decoration: BoxDecoration(color: const Color(0xFF142A44), borderRadius: BorderRadius.circular(14), border: Border.all(color: kNeonGreen.withValues(alpha: 0.18))), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.call, color: kNeonGreen, size: 18), SizedBox(width: 8), Text('Voice', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))])))),
+                    const SizedBox(width: 10),
+                    Expanded(child: InkWell(onTap: otherUserId == null ? null : () => _openCallScreen(otherUserId, displayName, true), borderRadius: BorderRadius.circular(14), child: Container(height: 44, decoration: BoxDecoration(color: const Color(0xFF142A44), borderRadius: BorderRadius.circular(14), border: Border.all(color: kNeonBlue.withValues(alpha: 0.18))), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.videocam, color: kNeonBlue, size: 18), SizedBox(width: 8), Text('Video', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))])))),
+                  ]),
+                ]),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeaderCard() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [const Color(0xFF1D2B6F).withValues(alpha: 0.85), const Color(0xFF0C1534).withValues(alpha: 0.95)]),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+          ),
+          child: Row(children: [
+            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: kNeonBlue.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.phone_in_talk_rounded, color: kNeonBlue)),
+            const SizedBox(width: 12),
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Voice and video calls', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)), SizedBox(height: 4), Text('Start a secure call or review recent conversations.', style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.4))])),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyCalls() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(width: 96, height: 96, decoration: BoxDecoration(color: kNeonBlue.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(24)), child: const Icon(Icons.phone_disabled_rounded, size: 40, color: kNeonBlue)),
+        const SizedBox(height: 20),
+        const Text('No calls yet', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        const Text('Start your first secure call and it will appear here instantly.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 13)),
+        const SizedBox(height: 24),
+        ElevatedButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserSearchScreen())), icon: const Icon(Icons.call, color: Colors.black), label: const Text('Start call'), style: ElevatedButton.styleFrom(backgroundColor: kNeonGreen, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)))),
+      ]),
+    );
+  }
+
+  Future<Map<String, String>> _getCallerInfo(String? userId) async {
+    if (userId == null || userId.isEmpty) {
+      return {'name': 'Unknown'};
+    }
+
+    try {
+      final response = await SupabaseService.client.from('users').select('name, username').eq('id', userId).maybeSingle();
+
+      if (response is Map<String, dynamic>) {
+        final name = response['name'] as String? ?? response['username'] as String?;
+        return {'name': name ?? 'Unknown'};
+      }
+    } catch (_) {}
+
+    return {'name': 'Unknown'};
+  }
+
+  DateTime? _parseTimestamp(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) {
+      try {
+        return DateTime.parse(value).toLocal();
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  String _formatCallTime(DateTime value) {
+    final now = DateTime.now();
+    final difference = now.difference(value);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    }
+    if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    }
+    if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    }
+    return 'Just now';
+  }
 }
 
+class _CallsBackgroundPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final bg = Paint()..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: const [Color(0xFF050816), Color(0xFF0B1330)]).createShader(rect);
+    canvas.drawRect(rect, bg);
+
+    final aurora = Paint()..shader = RadialGradient(center: const Alignment(-0.25, -0.25), radius: 1.1, colors: const [Color(0xFF4C6FFF), Color(0xFF1F2A5A), Color(0x00000000)]).createShader(rect);
+    canvas.drawCircle(Offset(size.width * 0.2, size.height * 0.2), size.width * 0.3, aurora);
+
+    final glow = Paint()..shader = RadialGradient(center: const Alignment(0.75, 0.1), radius: 0.8, colors: const [Color(0xFFB14EFF), Color(0x00000000)]).createShader(rect);
+    canvas.drawCircle(Offset(size.width * 0.8, size.height * 0.12), size.width * 0.24, glow);
+
+    final starPaint = Paint()..color = Colors.white.withValues(alpha: 0.9);
+    for (var i = 0; i < 12; i++) {
+      final x = size.width * (0.08 + (i % 6) * 0.16);
+      final y = size.height * (0.12 + (i ~/ 6) * 0.22);
+      canvas.drawCircle(Offset(x, y), 1.2, starPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}

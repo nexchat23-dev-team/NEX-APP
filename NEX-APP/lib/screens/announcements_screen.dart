@@ -11,24 +11,27 @@ class AnnouncementsScreen extends StatelessWidget {
       {
         'title': 'NEX APP System Ready',
         'badge': 'SYSTEM',
-        'content': 'Realtime messaging, AI modules, and token services are all live and stable. This is the official service feed, not a demo.',
-        'admin': 'System Admin',
+        'content':
+            'Realtime messaging, AI modules, and token services are coming soon stay tuned for updates and announcements.',
+        'admin': 'System Admin Zen',
         'time': 'Just now',
         'pinned': true,
       },
       {
         'title': 'Realtime updates now live',
         'badge': 'UPDATE',
-        'content': 'Your feeds and notifications now use live sync. Expect smoother performance and less placeholder content.',
-        'admin': 'NEX Team',
+        'content':
+            'Your feeds and notifications now use live sync. Expect smoother performance and less placeholder content.',
+        'admin': 'NEXCHAT Team',
         'time': '1 hour ago',
         'pinned': false,
       },
       {
         'title': 'Maintenance Notice',
         'badge': 'SYSTEM',
-        'content': 'Scheduled maintenance is planned for Sunday 2AM - 4AM UTC. Most features will remain available during the window.',
-        'admin': 'System Admin',
+        'content':
+            'Scheduled maintenance is planned for Sunday 2AM - 4AM UTC. Most features will remain available during the window.',
+        'admin': 'System Admin Manager Emmyung',
         'time': '5 days ago',
         'pinned': false,
       },
@@ -60,7 +63,9 @@ class AnnouncementsScreen extends StatelessWidget {
               child: const Icon(Icons.campaign, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 12),
-            const Text('Announcements', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            const Text('Announcements',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
         leading: Container(
@@ -81,7 +86,7 @@ class AnnouncementsScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final announcement = announcements[index];
           final isPinned = announcement['pinned'] as bool;
-          
+
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
@@ -89,12 +94,17 @@ class AnnouncementsScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: isPinned
-                    ? [kNeonBlue.withValues(alpha: 0.15), kNeonBlue.withValues(alpha: 0.05)]
+                    ? [
+                        kNeonBlue.withValues(alpha: 0.15),
+                        kNeonBlue.withValues(alpha: 0.05)
+                      ]
                     : [const Color(0xFF0D1E36), const Color(0xFF0A1628)],
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isPinned ? kNeonBlue.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1),
+                color: isPinned
+                    ? kNeonBlue.withValues(alpha: 0.5)
+                    : Colors.white.withValues(alpha: 0.1),
                 width: isPinned ? 2 : 1,
               ),
               boxShadow: isPinned
@@ -118,7 +128,8 @@ class AnnouncementsScreen extends StatelessWidget {
                       if (isPinned)
                         Container(
                           margin: const EdgeInsets.only(right: 8),
-                          child: const Icon(Icons.push_pin, color: kNeonBlue, size: 18),
+                          child: const Icon(Icons.push_pin,
+                              color: kNeonBlue, size: 18),
                         ),
                       Expanded(
                         child: Text(
@@ -131,10 +142,14 @@ class AnnouncementsScreen extends StatelessWidget {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [kNeonBlue, kNeonBlue.withValues(alpha: 0.8)],
+                            colors: [
+                              kNeonBlue,
+                              kNeonBlue.withValues(alpha: 0.8)
+                            ],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
@@ -181,7 +196,8 @@ class AnnouncementsScreen extends StatelessWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.access_time, color: Colors.white54, size: 14),
+                          const Icon(Icons.access_time,
+                              color: Colors.white54, size: 14),
                           const SizedBox(width: 4),
                           Text(
                             announcement['time'] as String,
@@ -195,7 +211,9 @@ class AnnouncementsScreen extends StatelessWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.admin_panel_settings, color: kNeonBlue.withValues(alpha: 0.7), size: 14),
+                          Icon(Icons.admin_panel_settings,
+                              color: kNeonBlue.withValues(alpha: 0.7),
+                              size: 14),
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
@@ -221,4 +239,3 @@ class AnnouncementsScreen extends StatelessWidget {
     );
   }
 }
-

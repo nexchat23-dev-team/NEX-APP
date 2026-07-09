@@ -1,24 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'login_screen.dart';
 import 'home_screen.dart';
-import 'permission_screen.dart';
-import '../services/auth_service.dart';
 
 class SplashScreenConstants {
-  static const Duration splashDelay = Duration(seconds: 3);
+  static const Duration statusDelay = Duration(milliseconds: 1200);
+  static const Duration transitionDelay = Duration(milliseconds: 1000);
 
-  // Colors - Rebranded to NEX Pro League Palette
-  static const Color kDeepNavy = Color(0xFF070B14);
-  static const Color kSystemBlue = Color(0xFF3B82F6);
-  static const Color kNeonPurple = Color(0xFF8B5CF6);
-  static const Color kNeonGreen = Color(0xFF10B981);
+  static const Color kDeepNavy = Color(0xFF050814);
+  static const Color kStarBlue = Color(0xFF5D7CFF);
+  static const Color kNeonPurple = Color(0xFFB23BFF);
+  static const Color kNeonGreen = Color(0xFF22D47C);
+  static const Color kElectricCyan = Color(0xFF34D1F8);
 
-  // Strings
   static const String appTitle = 'NEXCHAT';
-  static const String appSubtitle = 'QUANTUM_ENCRYPTED_OS';
+  static const String appSubtitle = 'SECURELY CONNECTED';
 }
 
 class SplashScreen extends StatefulWidget {
@@ -29,178 +24,294 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final List<String> _statusMessages = [
+    'NEXCHAT ENGINE INITIATED',
+    'NEXCHAT ENGINE IS COMPUTING YOUR SERVER PLS HOLD',
+    'YOUR SERVER HAS BEEN INITIALIZE',
+  ];
+  int _statusIndex = 0;
+  String _statusMessage = 'NEXCHAT ENGINE INITIATED';
+  Timer? _statusTimer;
+  bool _hasNavigated = false;
+
   @override
   void initState() {
     super.initState();
-    _navigateAfterDelay();
+    _startInitializationSequence();
   }
 
-  Future<void> _navigateAfterDelay() async {
-    try {
-      await Future.delayed(SplashScreenConstants.splashDelay);
-      if (!mounted) return;
+  @override
+  void dispose() {
+    _statusTimer?.cancel();
+    super.dispose();
+  }
 
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final prefs = await SharedPreferences.getInstance();
-      final isFirstTime = prefs.getBool(PermissionScreen.firstTimeKey) ?? true;
+  void _startInitializationSequence() {
+    _showStatusMessage();
+  }
 
-      String routeName;
-      if (authService.isLoggedIn) {
-        routeName = isFirstTime ? PermissionScreen.routeName : HomeScreen.routeName;
-      } else {
-        routeName = LoginScreen.routeName;
-      }
+  void _showStatusMessage() {
+    if (!mounted) return;
+    setState(() {
+      _statusMessage = _statusMessages[_statusIndex];
+    });
 
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, routeName);
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, LoginScreen.routeName);
-      }
+    if (_statusIndex < _statusMessages.length - 1) {
+      _statusTimer?.cancel();
+      _statusTimer = Timer(SplashScreenConstants.transitionDelay, () {
+        if (!mounted) return;
+        setState(() => _statusIndex += 1);
+        _showStatusMessage();
+      });
+    } else {
+      _statusTimer?.cancel();
+      _statusTimer = Timer(SplashScreenConstants.statusDelay, () {
+        if (!mounted || _hasNavigated) return;
+        _hasNavigated = true;
+        Navigator.pushReplacementNamed(context, HomeScreen.routeName);
+      });
     }
+  }
+
+  Widget _buildStar(double left, double top, double size, Color color) {
+    return Positioned(
+      left: left,
+      top: top,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.55),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.28),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: SplashScreenConstants.kDeepNavy,
+      backgroundColor: const Color(0xFF050814),
       body: Stack(
         children: [
-          // Background Atmosphere
-          Positioned(
-            top: -100,
-            child: Container(
-              width: MediaQuery.of(context).size.width,
-              height: 400,
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  colors: [
-                    SplashScreenConstants.kNeonPurple.withValues(alpha: 0.1),
-                    Colors.transparent,
-                  ],
-                ),
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF050814),
+                  Color(0xFF0A0E27),
+                  Color(0xFF0B1030),
+                ],
               ),
             ),
           ),
-          const Center(child: _AnimatedSplashContent()),
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _SpaceTechPainter(),
+            ),
+          ),
+          Positioned.fill(
+            child: Stack(
+              children: [
+                _buildStar(40, 88, 2.5, SplashScreenConstants.kStarBlue),
+                _buildStar(110, 160, 1.8, SplashScreenConstants.kElectricCyan),
+                _buildStar(212, 82, 2, SplashScreenConstants.kNeonPurple),
+                _buildStar(306, 130, 2.2, SplashScreenConstants.kStarBlue),
+                _buildStar(128, 278, 1.6, SplashScreenConstants.kElectricCyan),
+                _buildStar(292, 244, 2.4, SplashScreenConstants.kNeonPurple),
+              ],
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    boxShadow: [
+                      BoxShadow(
+                        color: SplashScreenConstants.kNeonPurple.withValues(alpha: 0.3),
+                        blurRadius: 30,
+                        spreadRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.sync_rounded,
+                        size: 60,
+                        color: SplashScreenConstants.kNeonPurple,
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'NEXCHAT',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'QUANTUM ENCRYPTED',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: SplashScreenConstants.kElectricCyan,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            bottom: 60,
+            left: 0,
+            right: 0,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 60),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      minHeight: 3,
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        SplashScreenConstants.kNeonPurple.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  _statusMessage,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: SplashScreenConstants.kElectricCyan,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Initializing secure network...',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white38,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _AnimatedSplashContent extends StatefulWidget {
-  const _AnimatedSplashContent();
-
+class _SpaceTechPainter extends CustomPainter {
   @override
-  State<_AnimatedSplashContent> createState() => _AnimatedSplashContentState();
-}
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final skyPaint = Paint()
+      ..shader = const RadialGradient(
+        center: Alignment(-0.3, -0.4),
+        radius: 1.25,
+        colors: [Color(0xFF153A72), Color(0xFF050814)],
+      ).createShader(rect);
+    canvas.drawRect(rect, skyPaint);
 
-class _AnimatedSplashContentState extends State<_AnimatedSplashContent> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _pulse;
+    final glowPaint = Paint()
+      ..shader = const RadialGradient(
+        center: Alignment(0.75, 0.1),
+        radius: 0.7,
+        colors: [Color(0xFF7A4DFF), Color(0x00000000)],
+      ).createShader(rect);
+    canvas.drawCircle(
+      Offset(size.width * 0.8, size.height * 0.12),
+      size.width * 0.25,
+      glowPaint,
+    );
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
+    final nebulaPaint = Paint()
+      ..shader = const RadialGradient(
+        center: Alignment(-0.1, 0.9),
+        radius: 0.8,
+        colors: [Color(0xFF0F4E6A), Color(0x00000000)],
+      ).createShader(rect);
+    canvas.drawCircle(
+      Offset(size.width * 0.18, size.height * 0.84),
+      size.width * 0.3,
+      nebulaPaint,
+    );
 
-    _pulse = Tween<double>(begin: 1.0, end: 1.15).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    final starPaint = Paint()..color = Colors.white.withValues(alpha: 0.9);
+    for (final point in [
+      const Offset(38, 82),
+      const Offset(98, 154),
+      const Offset(216, 78),
+      const Offset(304, 132),
+      const Offset(120, 266),
+      const Offset(280, 240),
+      const Offset(56, 420),
+      const Offset(332, 392),
+    ]) {
+      canvas.drawCircle(point, 1.5, starPaint);
+    }
+
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.white12
+      ..strokeWidth = 1.1;
+
+    final center = Offset(size.width * 0.5, size.height * 0.2);
+    canvas.drawCircle(center, 120, ringPaint);
+    canvas.drawCircle(center, 200, ringPaint);
+    canvas.drawCircle(center, 270, ringPaint);
+
+    ringPaint.color = Colors.white24;
+    ringPaint.strokeWidth = 1.3;
+    canvas.drawLine(
+      Offset(size.width * 0.1, size.height * 0.15),
+      Offset(size.width * 0.35, size.height * 0.08),
+      ringPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width * 0.82, size.height * 0.18),
+      Offset(size.width * 0.68, size.height * 0.04),
+      ringPaint,
+    );
+
+    final glowPaint2 = Paint()..color = const Color(0xFF34D1F8).withValues(alpha: 0.14);
+    canvas.drawCircle(
+      Offset(size.width * 0.8, size.height * 0.7),
+      70,
+      glowPaint2,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.18, size.height * 0.72),
+      50,
+      glowPaint2,
     );
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _pulse,
-      builder: (context, child) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Glowing Logo Container
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: SplashScreenConstants.kNeonPurple.withValues(alpha: 0.2 * _pulse.value),
-                  width: 2,
-                ),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: SplashScreenConstants.kNeonPurple.withValues(alpha: 0.05),
-                  boxShadow: [
-                    BoxShadow(
-                      color: SplashScreenConstants.kNeonPurple.withValues(alpha: 0.1 * _pulse.value),
-                      blurRadius: 30 * _pulse.value,
-                      spreadRadius: 5,
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(40),
-                  child: Image.asset(
-                    'assets/images/logo.jpg',
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 40),
-            // Technical Title
-            const Text(
-              SplashScreenConstants.appTitle,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 8, // Ultra-wide spacing for Pro look
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              SplashScreenConstants.appSubtitle,
-              style: const TextStyle(
-                color: SplashScreenConstants.kNeonGreen,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(height: 60),
-            // Sleek Progress Bar
-            SizedBox(
-              width: 140,
-              child: LinearProgressIndicator(
-                backgroundColor: Colors.white.withValues(alpha: 0.05),
-                color: SplashScreenConstants.kNeonPurple,
-                minHeight: 2,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'INITIALIZING_HANDSHAKE...',
-              style: TextStyle(color: Colors.white24, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

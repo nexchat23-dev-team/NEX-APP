@@ -1,5 +1,6 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/chat_service.dart';
 import '../utils/constants.dart';
 import 'group_invite_screen.dart';
@@ -8,7 +9,7 @@ import 'group_settings_screen.dart';
 class GroupChatScreen extends StatefulWidget {
   static const routeName = '/group-chat';
   final String? conversationId;
-  
+
   const GroupChatScreen({super.key, this.conversationId});
 
   @override
@@ -17,10 +18,19 @@ class GroupChatScreen extends StatefulWidget {
 
 class _GroupChatScreenState extends State<GroupChatScreen> {
   final TextEditingController messageController = TextEditingController();
+  Timer? _shootingStarTimer;
+  bool _showShootingStar = false;
+  double _shootingStartX = 0;
+  double _shootingStartY = 0;
+  double _shootingEndX = 0;
+  double _shootingEndY = 0;
+  Color _shootingStarColor = Colors.white;
+  Color _shootingFromColor = Colors.white;
+  Color _shootingToColor = Colors.white;
   final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _groupNameController = TextEditingController();
-  
+
   String? _conversationId;
   String _groupName = 'New Group';
   List<String> _members = [];
@@ -32,6 +42,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   void initState() {
     super.initState();
     _initializeGroup();
+    _scheduleShootingStar();
   }
 
   Future<void> _initializeGroup() async {
@@ -47,10 +58,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   Future<void> _loadGroupDetails() async {
     if (_conversationId == null) return;
-    
+
     try {
-      final doc = await _chatService.getConversation(_conversationId!);
-      final data = doc.data() as Map<String, dynamic>;
+      final data = await _chatService.getConversation(_conversationId!);
       setState(() {
         _groupName = data['groupName'] ?? 'Group';
         _members = List<String>.from(data['participants'] ?? []);
@@ -100,7 +110,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   hintText: 'Enter group name',
                   hintStyle: TextStyle(color: Colors.white38),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               ),
             ),
@@ -130,11 +141,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
               Navigator.pop(context);
               Navigator.pop(context);
             },
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white54)),
           ),
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.8)]),
+              gradient: LinearGradient(
+                  colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.8)]),
               borderRadius: BorderRadius.circular(12),
             ),
             child: ElevatedButton(
@@ -143,7 +156,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
               ),
-              child: const Text('Create', style: TextStyle(color: Colors.white)),
+              child:
+                  const Text('Create', style: TextStyle(color: Colors.white)),
             ),
           ),
         ],
@@ -166,7 +180,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       final currentUserId = _chatService.currentUserId;
       if (currentUserId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You must be logged in to create a group')),
+          const SnackBar(
+              content: Text('You must be logged in to create a group')),
         );
         setState(() => _isCreating = false);
         return;
@@ -220,7 +235,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             const SizedBox(height: 20),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Delete Message', style: TextStyle(color: Colors.white)),
+              title: const Text('Delete Message',
+                  style: TextStyle(color: Colors.white)),
               onTap: () async {
                 Navigator.pop(context);
                 await _deleteMessage(messageId);
@@ -285,7 +301,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white70)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -318,7 +335,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   void _showGroupInvite() {
     if (_conversationId == null) return;
-    
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -381,12 +398,20 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_groupName, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text(_groupName,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold)),
                       Row(
                         children: [
-                          Icon(Icons.people, color: kNeonPurple.withValues(alpha: 0.7), size: 14),
+                          Icon(Icons.people,
+                              color: kNeonPurple.withValues(alpha: 0.7),
+                              size: 14),
                           const SizedBox(width: 4),
-                          Text('${_members.length} members', style: const TextStyle(color: kNeonPurple, fontSize: 12)),
+                          Text('${_members.length} members',
+                              style: const TextStyle(
+                                  color: kNeonPurple, fontSize: 12)),
                         ],
                       ),
                     ],
@@ -398,53 +423,75 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: kNeonPurple.withValues(alpha: 0.3))),
+                border: Border(
+                    bottom:
+                        BorderSide(color: kNeonPurple.withValues(alpha: 0.3))),
               ),
-              child: const Text('Members', style: TextStyle(color: kNeonPurple, fontWeight: FontWeight.bold, fontSize: 16)),
+              child: const Text('Members',
+                  style: TextStyle(
+                      color: kNeonPurple,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
             ),
             const SizedBox(height: 12),
-            ...List.generate(_members.length, (index) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF121224),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: kNeonPurple.withValues(alpha: 0.2),
-                    child: Text(_members[index][0].toUpperCase(), style: const TextStyle(color: kNeonPurple, fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_members[index], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-                        Text(
-                          _admins.contains(_members[index]) ? 'Admin' : 'Member',
-                          style: TextStyle(
-                            color: _admins.contains(_members[index]) ? kNeonPurple : Colors.white54,
-                            fontSize: 12,
+            ...List.generate(
+                _members.length,
+                (index) => Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF121224),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.1)),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: kNeonPurple.withValues(alpha: 0.2),
+                            child: Text(_members[index][0].toUpperCase(),
+                                style: const TextStyle(
+                                    color: kNeonPurple,
+                                    fontWeight: FontWeight.bold)),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_admins.contains(_chatService.currentUserId) && _members[index] != _chatService.currentUserId)
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle, color: Colors.redAccent),
-                      onPressed: () async {
-                        await _chatService.removeMember(_conversationId!, _members[index]);
-                        setState(() => _members.removeAt(index));
-                      },
-                    ),
-                ],
-              ),
-            )),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(_members[index],
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500)),
+                                Text(
+                                  _admins.contains(_members[index])
+                                      ? 'Admin'
+                                      : 'Member',
+                                  style: TextStyle(
+                                    color: _admins.contains(_members[index])
+                                        ? kNeonPurple
+                                        : Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_admins.contains(_chatService.currentUserId) &&
+                              _members[index] != _chatService.currentUserId)
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle,
+                                  color: Colors.redAccent),
+                              onPressed: () async {
+                                await _chatService.removeMember(
+                                    _conversationId!, _members[index]);
+                                setState(() => _members.removeAt(index));
+                              },
+                            ),
+                        ],
+                      ),
+                    )),
             const SizedBox(height: 16),
             if (_admins.contains(_chatService.currentUserId))
               Row(
@@ -452,7 +499,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.8)]),
+                        gradient: LinearGradient(colors: [
+                          kNeonPurple,
+                          kNeonPurple.withValues(alpha: 0.8)
+                        ]),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
@@ -465,7 +515,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _showAddMemberDialog,
                         icon: const Icon(Icons.person_add, color: Colors.white),
-                        label: const Text('Add Member', style: TextStyle(color: Colors.white)),
+                        label: const Text('Add Member',
+                            style: TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
@@ -477,7 +528,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [kNeonGreen, kNeonGreen.withValues(alpha: 0.8)]),
+                        gradient: LinearGradient(colors: [
+                          kNeonGreen,
+                          kNeonGreen.withValues(alpha: 0.8)
+                        ]),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
@@ -490,7 +544,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _showSettings,
                         icon: const Icon(Icons.settings, color: Colors.white),
-                        label: const Text('Settings', style: TextStyle(color: Colors.white)),
+                        label: const Text('Settings',
+                            style: TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
@@ -508,111 +563,199 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   @override
   void dispose() {
+    _shootingStarTimer?.cancel();
     messageController.dispose();
     _groupNameController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
+  void _scheduleShootingStar() {
+    _shootingStarTimer?.cancel();
+    _shootingStarTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!mounted) return;
+      _launchShootingStar();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _launchShootingStar();
+    });
+  }
+
+  void _launchShootingStar() {
+    final size = MediaQuery.of(context).size;
+    final startX = Random().nextDouble() * size.width * 0.7;
+    final startY = Random().nextDouble() * size.height * 0.16;
+    final endX = startX + size.width * 0.45;
+    final endY = startY + size.height * 0.12;
+    final palette = [Colors.white, const Color(0xFF7DDCFF), const Color(0xFFB23BFF), const Color(0xFFFFD166)];
+
+    setState(() {
+      _shootingStartX = startX;
+      _shootingStartY = startY;
+      _shootingEndX = endX;
+      _shootingEndY = endY;
+      _shootingFromColor = palette[Random().nextInt(palette.length)];
+      _shootingToColor = palette[Random().nextInt(palette.length)];
+      _shootingStarColor = _shootingFromColor;
+      _showShootingStar = true;
+    });
+  }
+
+  Widget _buildShootingStarOverlay() {
+    if (!_showShootingStar) return const SizedBox.shrink();
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 900),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        final x = _shootingStartX + (_shootingEndX - _shootingStartX) * value;
+        final y = _shootingStartY + (_shootingEndY - _shootingStartY) * value;
+        final opacity = (1 - value).clamp(0.0, 1.0).toDouble();
+
+        final currentColor = Color.lerp(_shootingFromColor, _shootingToColor, value) ?? _shootingStarColor;
+
+        return Positioned(
+          left: x,
+          top: y,
+          child: Opacity(
+            opacity: opacity,
+            child: Transform.rotate(
+              angle: -0.35,
+              child: Container(
+                width: 140,
+                height: 2,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      currentColor.withValues(alpha: 0.95),
+                      _shootingToColor.withValues(alpha: 0.6),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: currentColor.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      onEnd: () => setState(() => _showShootingStar = false),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0D1A), // Dark purple-black
+      backgroundColor: const Color(0xFF0D0D1A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF151528), // Purple-tinted
+        backgroundColor: const Color(0xFF151528),
         titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: Colors.white70, size: 20),
+          onPressed: () => Navigator.maybePop(context),
+        ),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.6)],
+                  colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.65)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: kNeonPurple.withValues(alpha: 0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: kNeonPurple.withValues(alpha: 0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
               child: const Icon(Icons.group, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_groupName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-                Row(
-                  children: [
-                    Icon(Icons.people, color: kNeonPurple.withValues(alpha: 0.7), size: 14),
-                    const SizedBox(width: 4),
-                    Text('${_members.length} members', style: const TextStyle(color: kNeonPurple, fontSize: 12, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_groupName,
+                      style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.people,
+                          color: kNeonPurple.withValues(alpha: 0.8), size: 14),
+                      const SizedBox(width: 6),
+                      Text('${_members.length} members',
+                          style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 4),
-            decoration: BoxDecoration(
-              color: kNeonPurple.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: IconButton(
-              onPressed: _showGroupInvite,
-              icon: const Icon(Icons.link, color: kNeonPurple),
-              tooltip: 'Group Invite',
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.only(right: 4),
-            decoration: BoxDecoration(
-              color: kNeonPurple.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: IconButton(onPressed: () {}, icon: const Icon(Icons.call, color: kNeonPurple)),
-          ),
-          Container(
-            margin: const EdgeInsets.only(right: 4),
-            decoration: BoxDecoration(
-              color: kNeonPurple.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: IconButton(onPressed: () {}, icon: const Icon(Icons.videocam, color: kNeonPurple)),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: kNeonPurple.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: IconButton(onPressed: _showGroupInfoDialog, icon: const Icon(Icons.info_outline, color: kNeonPurple)),
-          ),
+          _buildGroupAction(Icons.link, _showGroupInvite, 'Invite'),
+          _buildGroupAction(Icons.call, () {}, 'Call'),
+          _buildGroupAction(Icons.videocam, () {}, 'Video'),
+          _buildGroupAction(Icons.info_outline, _showGroupInfoDialog, 'Info'),
         ],
       ),
-      body: _isLoading || _isCreating
-          ? Center(
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: kNeonPurple.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const CircularProgressIndicator(color: kNeonPurple),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF060810), Color(0xFF0C1223)],
               ),
-            )
-          : Column(
-              children: [
-                Expanded(child: _buildMessages()),
-                _buildMessageInput(),
-              ],
             ),
+          ),
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _SpaceGlowPainter(),
+            ),
+          ),
+          _isLoading || _isCreating
+              ? Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: kNeonPurple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const CircularProgressIndicator(color: kNeonPurple),
+                  ),
+                )
+              : Column(
+                  children: [
+                    Expanded(child: _buildMessages()),
+                    _buildMessageInput(),
+                  ],
+                ),
+          _buildShootingStarOverlay(),
+        ],
+      ),
     );
   }
 
@@ -624,7 +767,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       );
     }
 
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _chatService.getMessages(_conversationId!),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -640,7 +783,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           );
         }
 
-        final messages = snapshot.data?.docs ?? [];
+        final messages = snapshot.data ?? [];
         if (messages.isEmpty) {
           return const Center(
             child: Text('No messages yet. Start the conversation!',
@@ -654,16 +797,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           itemCount: messages.length,
           itemBuilder: (context, index) {
-            final doc = messages[index];
-            final data = doc.data() as Map<String, dynamic>;
-            final messageId = doc.id;
+            final data = messages[index];
+            final messageId = data['id']?.toString() ?? '';
             final isMine = data['senderId'] == _chatService.currentUserId;
-            final time = data['timestamp'] != null
-                ? (data['timestamp'] as Timestamp).toDate().toString().substring(11, 16)
-                : 'Now';
+            final time = _formatTimestamp(data['timestamp']);
             return GestureDetector(
               onLongPress: isMine ? () => _showMessageOptions(messageId) : null,
-              child: _buildMessageBubble(data['text'] as String, isMine, time),
+              child: _buildMessageBubble(data['text']?.toString() ?? '', isMine, time),
             );
           },
         );
@@ -671,44 +811,63 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     );
   }
 
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return 'Now';
+    if (timestamp is DateTime) {
+      return timestamp.toLocal().toString().substring(11, 16);
+    }
+    if (timestamp is String) {
+      try {
+        return DateTime.parse(timestamp).toLocal().toString().substring(11, 16);
+      } catch (_) {
+        return timestamp;
+      }
+    }
+    return timestamp.toString();
+  }
+
   Widget _buildMessageBubble(String text, bool isMine, String time) {
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.74),
         decoration: BoxDecoration(
-          // NEON PURPLE gradient for user messages
+          color: isMine ? null : const Color(0xFF181A2F),
           gradient: isMine
               ? LinearGradient(
-                  colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.7)],
+                  colors: [kNeonPurple, kNeonPurple.withValues(alpha: 0.75)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
               : null,
-          color: isMine ? null : const Color(0xFF1A1A2E),
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(isMine ? 20 : 4),
-            bottomRight: Radius.circular(isMine ? 4 : 20),
+            topLeft: Radius.circular(isMine ? 18 : 4),
+            topRight: Radius.circular(isMine ? 4 : 18),
+            bottomLeft: const Radius.circular(18),
+            bottomRight: const Radius.circular(18),
           ),
-          border: isMine
-              ? Border.all(color: kNeonPurple.withValues(alpha: 0.5), width: 1.5)
-              : Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          boxShadow: isMine
-              ? [
-                  BoxShadow(
-                    color: kNeonPurple.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
+          border: Border.all(
+            color: isMine
+                ? kNeonPurple.withValues(alpha: 0.35)
+                : Colors.white.withValues(alpha: 0.08),
+            width: isMine ? 1.5 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isMine
+                  ? kNeonPurple.withValues(alpha: 0.25)
+                  : Colors.black.withValues(alpha: 0.12),
+              blurRadius: isMine ? 12 : 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment:
+              isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             Text(
               text,
@@ -718,14 +877,15 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isMine)
                   const Padding(
-                    padding: EdgeInsets.only(right: 4),
-                    child: Icon(Icons.done_all, size: 14, color: Colors.white70),
+                    padding: EdgeInsets.only(right: 6),
+                    child:
+                        Icon(Icons.done_all, size: 14, color: Colors.white70),
                   ),
                 Text(
                   time,
@@ -739,6 +899,21 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGroupAction(
+      IconData icon, VoidCallback onPressed, String tooltip) {
+    return Container(
+      margin: const EdgeInsets.only(right: 4),
+      decoration: BoxDecoration(
+        color: kNeonPurple.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: IconButton(
+          onPressed: onPressed,
+          icon: Icon(icon, color: kNeonPurple),
+          tooltip: tooltip),
     );
   }
 
@@ -763,24 +938,20 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           Container(
             decoration: BoxDecoration(
               color: kNeonPurple.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: IconButton(
               icon: const Icon(Icons.add_circle_outline, color: kNeonPurple),
-              onPressed: () {},
+              onPressed: _showAddMemberDialog,
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1A1A2E), Color(0xFF1E1E3A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.topRight,
-                ),
+                color: const Color(0xFF1A1A2E),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: kNeonPurple.withValues(alpha: 0.3)),
+                border: Border.all(color: Colors.white12),
               ),
               child: TextField(
                 controller: messageController,
@@ -789,13 +960,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   hintText: 'Type a message...',
                   hintStyle: TextStyle(color: Colors.white38),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 18, vertical: 15),
                 ),
                 onSubmitted: (_) => sendMessage(),
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -803,21 +975,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(25),
+              borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: kNeonPurple.withValues(alpha: 0.5),
+                  color: kNeonPurple.withValues(alpha: 0.4),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: FloatingActionButton(
+            child: IconButton(
               onPressed: sendMessage,
-              mini: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              child: const Icon(Icons.send, color: Colors.white, size: 20),
+              icon: const Icon(Icons.send, color: Colors.white),
             ),
           ),
         ],
@@ -826,3 +995,39 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 }
 
+class _SpaceGlowPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final bgPaint = Paint()
+      ..shader = const RadialGradient(
+        center: Alignment(-0.2, -0.3),
+        radius: 1.2,
+        colors: [Color(0xFF120F2A), Color(0xFF060810)],
+      ).createShader(rect);
+    canvas.drawRect(rect, bgPaint);
+
+    final glowPaint = Paint()
+      ..shader = const RadialGradient(
+        center: Alignment(0.8, 0.1),
+        radius: 0.8,
+        colors: [Color(0xFF7B61FF), Color(0x00000000)],
+      ).createShader(rect);
+    canvas.drawCircle(
+      Offset(size.width * 0.78, size.height * 0.16),
+      size.width * 0.24,
+      glowPaint,
+    );
+
+    final pulsePaint = Paint()
+      ..color = const Color(0xFF34D1F8).withValues(alpha: 0.12);
+    canvas.drawCircle(
+      Offset(size.width * 0.2, size.height * 0.78),
+      size.width * 0.18,
+      pulsePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}

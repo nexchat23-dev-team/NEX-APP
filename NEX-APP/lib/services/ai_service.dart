@@ -4,8 +4,10 @@ import 'dart:async';
 /// Use flutter build or flutter run with --dart-define flags:
 ///   --dart-define=NEX_AI_MODEL=your-model-name
 ///   --dart-define=NEX_AI_API_KEY=your-api-key
-const String kNexAiModel = String.fromEnvironment('NEX_AI_MODEL', defaultValue: 'local-nex-reels-model');
-const String kNexAiApiKey = String.fromEnvironment('NEX_AI_API_KEY', defaultValue: '');
+const String kNexAiModel = String.fromEnvironment('NEX_AI_MODEL',
+    defaultValue: 'local-nex-reels-model');
+const String kNexAiApiKey =
+    String.fromEnvironment('NEX_AI_API_KEY', defaultValue: '');
 
 class AIService {
   AIService._();

@@ -1,0 +1,274 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    function isNonEmptyString(value) {
+      return value is string && value.size() > 0;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isNonNegativeInt(value) {
+      return value is int && value >= 0;
+    }
+
+    function isValidUrl(value) {
+      return value is string && value.matches('^https?://');
+    }
+
+    function isConversationParticipant(conversationId) {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/conversations/$(conversationId)).exists &&
+             uid() in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+    }
+
+    function isSquadMember(squadId) {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/squads/$(squadId)).exists &&
+             uid() in get(/databases/$(database)/documents/squads/$(squadId)).data.members;
+    }
+
+    function isClanMember(clanId) {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/clans/$(clanId)).exists &&
+             uid() in get(/databases/$(database)/documents/clans/$(clanId)).data.members;
+    }
+
+    function isClanAdmin(clanId) {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/clans/$(clanId)).exists &&
+             uid() in get(/databases/$(database)/documents/clans/$(clanId)).data.admins;
+    }
+
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && uid() == uid &&
+                    hasRequiredFields(request.resource.data, ['uid', 'email', 'createdAt']) &&
+                    request.resource.data.uid == uid &&
+                    request.resource.data.email is string &&
+                    isValidTimestamp(request.resource.data.createdAt);
+      allow update: if isAuthenticated() && uid() == uid;
+      allow delete: if false;
+    }
+
+    match /advertisements/{adId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+                    request.resource.data.sellerUID == uid() &&
+                    hasRequiredFields(request.resource.data, ['sellerUID', 'title', 'description', 'cta', 'createdAt']) &&
+                    request.resource.data.title is string &&
+                    request.resource.data.description is string &&
+                    request.resource.data.cta is string &&
+                    isValidTimestamp(request.resource.data.createdAt);
+      allow update, delete: if isAuthenticated() && uid() == resource.data.sellerUID;
+    }
+
+    match /blockedUsers/{blockId} {
+      allow create: if isAuthenticated() &&
+                    request.resource.data.blockerId == uid() &&
+                    request.resource.data.blockedId is string &&
+                    isValidTimestamp(request.resource.data.blockedAt);
+      allow read: if isAuthenticated() &&
+                   (uid() == resource.data.blockerId || uid() == resource.data.blockedId);
+      allow update: if false;
+      allow delete: if isAuthenticated() && uid() == resource.data.blockerId;
+    }
+
+    match /calls/{callId} {
+      allow create: if isAuthenticated() &&
+                    request.resource.data.callerId == uid() &&
+                    request.resource.data.receiverId is string &&
+                    request.resource.data.status is string &&
+                    isValidTimestamp(request.resource.data.startTime);
+      allow read: if isAuthenticated() &&
+                  (uid() == resource.data.callerId || uid() == resource.data.receiverId);
+      allow update: if isAuthenticated() &&
+                  (uid() == resource.data.callerId || uid() == resource.data.receiverId);
+      allow delete: if false;
+
+      match /iceCandidates/{candidateId} {
+        allow create: if isAuthenticated() && request.resource.data.from == uid();
+        allow read: if isAuthenticated() &&
+                    (uid() == get(/databases/$(database)/documents/calls/$(callId)).data.callerId ||
+                     uid() == get(/databases/$(database)/documents/calls/$(callId)).data.receiverId);
+        allow update, delete: if isAuthenticated() && request.resource.data.from == uid();
+      }
+
+      match /sdp/{sdpId} {
+        allow create: if isAuthenticated() && request.resource.data.from == uid();
+        allow read: if isAuthenticated() &&
+                    (uid() == get(/databases/$(database)/documents/calls/$(callId)).data.callerId ||
+                     uid() == get(/databases/$(database)/documents/calls/$(callId)).data.receiverId);
+        allow update: if isAuthenticated() && request.resource.data.from == uid();
+        allow delete: if false;
+      }
+    }
+
+    match /callHistory/{historyId} {
+      allow create: if isAuthenticated() &&
+                    (request.resource.data.callerId == uid() || request.resource.data.receiverId == uid());
+      allow read: if isAuthenticated() &&
+                  (uid() == resource.data.callerId || uid() == resource.data.receiverId);
+      allow update: if isAuthenticated() &&
+                    (uid() == resource.data.callerId || uid() == resource.data.receiverId);
+      allow delete: if false;
+    }
+
+    match /groupCalls/{groupCallId} {
+      allow create: if isAuthenticated() && request.resource.data.initiatorId == uid();
+      allow read: if isAuthenticated() &&
+                  uid() in resource.data.participants;
+      allow update: if isAuthenticated() && uid() == resource.data.initiatorId;
+      allow delete: if isAuthenticated() && uid() == resource.data.initiatorId;
+
+      match /participants/{participantId} {
+        allow create: if isAuthenticated() && request.resource.data.userId == uid();
+        allow read: if isAuthenticated() &&
+                    uid() in get(/databases/$(database)/documents/groupCalls/$(groupCallId)).data.participants;
+        allow update, delete: if isAuthenticated() && uid() == resource.data.userId;
+      }
+    }
+
+    match /clans/{clanId} {
+      allow create: if isAuthenticated() && request.resource.data.founderId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() in resource.data.admins;
+      allow delete: if isAuthenticated() && uid() == resource.data.founderId;
+
+      match /messages/{messageId} {
+        allow create: if isAuthenticated() && request.resource.data.senderId == uid();
+        allow read: if isAuthenticated();
+        allow update, delete: if isAuthenticated() && uid() == resource.data.senderId;
+      }
+
+      match /events/{eventId} {
+        allow create: if isAuthenticated() && request.resource.data.createdBy == uid();
+        allow read: if isAuthenticated();
+        allow update, delete: if isAuthenticated() && uid() == resource.data.createdBy;
+      }
+    }
+
+    match /clanJoinRequests/{requestId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated() &&
+                  (uid() == resource.data.userId || isClanAdmin(resource.data.clanId));
+      allow update: if isAuthenticated() && isClanAdmin(resource.data.clanId);
+      allow delete: if isAuthenticated() &&
+                    (uid() == resource.data.userId || isClanAdmin(resource.data.clanId));
+    }
+
+    match /conversations/{conversationId} {
+      allow create: if isAuthenticated() &&
+                    request.resource.data.createdBy == uid() &&
+                    request.resource.data.participants is list &&
+                    request.resource.data.participants.size() > 1 &&
+                    uid() in request.resource.data.participants;
+      allow read: if isAuthenticated() && uid() in resource.data.participants;
+      allow update: if isAuthenticated() && uid() in resource.data.participants;
+      allow delete: if isAuthenticated() && uid() == resource.data.createdBy;
+
+      match /messages/{messageId} {
+        allow create: if isAuthenticated() &&
+                      request.resource.data.senderId == uid() &&
+                      request.resource.data.text is string &&
+                      request.resource.data.timestamp is timestamp;
+        allow read: if isConversationParticipant(conversationId);
+        allow update, delete: if isAuthenticated() && uid() == resource.data.senderId;
+      }
+
+      match /userSettings/{memberId} {
+        allow create, update, read: if isAuthenticated() && memberId == uid();
+        allow delete: if false;
+      }
+
+      match /members/{memberId} {
+        allow create: if isAuthenticated() && memberId == uid();
+        allow read: if isConversationParticipant(conversationId);
+        allow update, delete: if false;
+      }
+
+      match /joinRequests/{requestId} {
+        allow create: if isAuthenticated() && request.resource.data.userId == uid();
+        allow read: if isAuthenticated() &&
+                    (uid() == resource.data.userId || isConversationParticipant(conversationId));
+        allow update, delete: if isAuthenticated() &&
+                              (uid() == resource.data.userId || isConversationParticipant(conversationId));
+      }
+    }
+
+    match /sessions/{sessionId} {
+      allow create: if isAuthenticated() && request.resource.data.creatorId == uid();
+      allow read: if isAuthenticated() && (resource.data.isPublic == true || uid() in resource.data.participants);
+      allow update: if isAuthenticated() && uid() == resource.data.creatorId;
+      allow delete: if isAuthenticated() && uid() == resource.data.creatorId;
+
+      match /messages/{messageId} {
+        allow create: if isAuthenticated() &&
+                      request.resource.data.senderId == uid() &&
+                      request.resource.data.text is string &&
+                      request.resource.data.timestamp is timestamp;
+        allow read: if isAuthenticated() && (resource.data.isPublic == true || uid() in resource.data.participants);
+        allow update, delete: if isAuthenticated() && uid() == resource.data.senderId;
+      }
+    }
+
+    match /squads/{squadId} {
+      allow create: if isAuthenticated() && request.resource.data.leaderId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() in resource.data.members;
+      allow delete: if isAuthenticated() && uid() == resource.data.leaderId;
+
+      match /messages/{messageId} {
+        allow create: if isAuthenticated() &&
+                      request.resource.data.senderId == uid() &&
+                      request.resource.data.text is string &&
+                      request.resource.data.timestamp is timestamp;
+        allow read: if isSquadMember(squadId);
+        allow update, delete: if isAuthenticated() && uid() == resource.data.senderId;
+      }
+
+      match /sessions/{sessionId} {
+        allow create: if isAuthenticated() && uid() in resource.data.members;
+        allow read: if isAuthenticated() && uid() in resource.data.members;
+        allow update, delete: if isAuthenticated() && uid() == resource.data.creatorId;
+      }
+    }
+
+    match /statuses/{statusId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() && uid() == resource.data.userId;
+      allow delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    match /statusViews/{viewId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated();
+      allow update, delete: if false;
+    }
+
+    match /statusReactions/{reactionId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == uid();
+      allow read: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && uid() == resource.data.userId;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

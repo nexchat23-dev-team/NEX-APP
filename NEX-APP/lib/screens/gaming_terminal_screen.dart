@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/constants.dart';
 import '../services/session_service.dart';
 
@@ -57,7 +56,8 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
 
     final parts = trimmedCommand.toLowerCase().split(' ');
     final cmd = parts[0];
-    final args = parts.length > 1 ? parts.sublist(1).cast<String>() : <String>[];
+    final args =
+        parts.length > 1 ? parts.sublist(1).cast<String>() : <String>[];
 
     try {
       switch (cmd) {
@@ -124,7 +124,8 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
     _addOutput('  clear                  - Clear terminal output');
     _addOutput('  exit                   - Exit terminal');
     _addOutput('');
-    _addOutput('Gaming session format: NEXCHAT;gameid session;session_id;tme.nex-app');
+    _addOutput(
+        'Gaming session format: NEXCHAT;gameid session;session_id;tme.nex-app');
   }
 
   Future<void> _createGamingSession(List<String> args) async {
@@ -151,7 +152,8 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
 
       _addOutput('Session created successfully!');
       _addOutput('Session ID: $sessionId');
-      _addOutput('Share code: NEXCHAT;${gameName.replaceAll(' ', '_')};$sessionId;tme.nex-app');
+      _addOutput(
+          'Share code: NEXCHAT;${gameName.replaceAll(' ', '_')};$sessionId;tme.nex-app');
       _addOutput('Players can join using: join-session $sessionId');
     } catch (e) {
       _addOutput('Error creating session: $e');
@@ -174,7 +176,6 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
 
       _addOutput('Successfully joined session!');
       _addOutput('Use "session-info" to view details');
-
     } catch (e) {
       _addOutput('Error joining session: $e');
     }
@@ -194,15 +195,17 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
       _addOutput('Available sessions:');
       for (final session in sessions) {
         final status = session['status'] as String;
-        final players = (session['participants'] as List<dynamic>).cast<String>();
+        final players =
+            (session['participants'] as List<dynamic>).cast<String>();
         final maxParticipants = session['maxParticipants'] as int;
-        final startTime = session['startTime'];
-        final startLabel = startTime is Timestamp
-            ? (startTime.toDate().toLocal().toString().substring(11, 16))
+        final startTime = _parseSessionTime(session['startTime']);
+        final startLabel = startTime != null
+            ? '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}'
             : 'TBA';
 
         _addOutput('  - [${status.toUpperCase()}] ${session['title']}');
-        _addOutput('      Game: ${session['game']} • Players: ${players.length}/$maxParticipants • Starts: $startLabel');
+        _addOutput(
+            '      Game: ${session['game']} • Players: ${players.length}/$maxParticipants • Starts: $startLabel');
         _addOutput('      Join: join-session ${session['id']}');
       }
     } catch (e) {
@@ -231,7 +234,8 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
     _addOutput('Current Session Info:');
     _addOutput('  Session ID: $_currentGameId');
     _addOutput('  Status: Active');
-    _addOutput('  Share Code: NEXCHAT;game_session;$_currentGameId;tme.nex-app');
+    _addOutput(
+        '  Share Code: NEXCHAT;game_session;$_currentGameId;tme.nex-app');
   }
 
   void _inviteToSession(List<String> args) {
@@ -269,6 +273,24 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
     });
   }
 
+  DateTime? _parseSessionTime(dynamic timeValue) {
+    if (timeValue == null) return null;
+    
+    try {
+      if (timeValue is DateTime) {
+        return timeValue;
+      } else if (timeValue is String) {
+        return DateTime.parse(timeValue);
+      } else if (timeValue is int) {
+        return DateTime.fromMillisecondsSinceEpoch(timeValue);
+      }
+    } catch (e) {
+      return null;
+    }
+    
+    return null;
+  }
+
   @override
   void dispose() {
     _commandController.dispose();
@@ -287,7 +309,7 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: kNeonGreen.withOpacity(0.2),
+                color: kNeonGreen.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Icon(Icons.terminal, color: kNeonGreen, size: 20),
@@ -301,11 +323,13 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
         ),
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: _isInSession ? kNeonGreen.withOpacity(0.22) : Colors.red.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(12),
+              color: _isInSession
+                  ? kNeonGreen.withValues(alpha: 0.22)
+                  : Colors.red.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: _isInSession ? kNeonGreen : Colors.red,
                 width: 1,
@@ -315,8 +339,8 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
               _isInSession ? 'IN SESSION' : 'NO SESSION',
               style: TextStyle(
                 color: _isInSession ? kNeonGreen : Colors.red,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
                 fontFamily: 'monospace',
               ),
             ),
@@ -327,119 +351,131 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF121727),
-              border: Border(
-                bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
-              ),
-            ),
-            child: Row(
+            color: const Color(0xFF121727),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _isInSession ? 'Active session: $_activeGameName' : 'No active gaming session',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _isInSession
-                            ? 'Session ID: $_currentGameId • Ready to invite or share'
-                            : 'Create a session with "cs <game>" or browse sessions with "ls"',
-                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
-                      ),
-                    ],
+                Text(
+                  _isInSession ? 'Session ready for launch' : 'Console ready',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                if (_isBusy)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: kNeonPurple.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      children: [
-                        SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(kNeonPurple),
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Text('Processing...', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                      ],
-                    ),
+                const SizedBox(height: 8),
+                Text(
+                  _isInSession
+                      ? '$_activeGameName • Session ID: $_currentGameId'
+                      : 'Run commands below to open a multiplayer session, list live games, or invite players.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.74),
+                    fontSize: 13,
+                    height: 1.4,
                   ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: _commandShortcuts.map((shortcut) {
+                    return ActionChip(
+                      label: Text(shortcut['label']!,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700)),
+                      backgroundColor: const Color(0xFF181B24),
+                      avatar: const Icon(Icons.chevron_right,
+                          color: kNeonGreen, size: 18),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      onPressed: () {
+                        _commandController.text = shortcut['command']!;
+                        _commandController.selection =
+                            TextSelection.fromPosition(
+                          TextPosition(offset: _commandController.text.length),
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
               ],
             ),
           ),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            color: const Color(0xFF10131B),
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: _commandShortcuts.map((shortcut) {
-                return ActionChip(
-                  label: Text(shortcut['label']!, style: const TextStyle(color: Colors.white)),
-                  backgroundColor: const Color(0xFF181B24),
-                  avatar: const Icon(Icons.chevron_right, color: kNeonGreen, size: 18),
-                  onPressed: () {
-                    _commandController.text = shortcut['command']!;
-                    _commandController.selection = TextSelection.fromPosition(
-                      TextPosition(offset: _commandController.text.length),
-                    );
-                  },
-                );
-              }).toList(),
-            ),
+            height: 1,
+            color: Colors.white.withValues(alpha: 0.04),
           ),
           Expanded(
             child: Container(
               color: const Color(0xFF090B12),
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                itemCount: _terminalOutput.length,
-                itemBuilder: (context, index) {
-                  final line = _terminalOutput[index];
+              child: Stack(
+                children: [
+                  ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                    itemCount: _terminalOutput.length,
+                    itemBuilder: (context, index) {
+                      final line = _terminalOutput[index];
+                      final isCommand = line.startsWith('nex-user@nex-app:');
 
-                  final isCommand = line.startsWith('nex-user@nex-app:');
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      line,
-                      style: TextStyle(
-                        color: isCommand ? kNeonGreen : Colors.white,
-                        fontFamily: 'monospace',
-                        fontSize: 14,
-                        height: 1.5,
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text(
+                          line,
+                          style: TextStyle(
+                            color: isCommand ? kNeonGreen : Colors.white,
+                            fontFamily: 'monospace',
+                            fontSize: 14,
+                            height: 1.6,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  if (_isBusy)
+                    Positioned(
+                      right: 18,
+                      top: 18,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.35),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: const [
+                            SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(kNeonPurple),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Text('processing',
+                                style: TextStyle(
+                                    color: Colors.white70, fontSize: 12)),
+                          ],
+                        ),
                       ),
                     ),
-                  );
-                },
+                ],
               ),
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             decoration: BoxDecoration(
               color: const Color(0xFF121727),
               border: Border(
-                top: BorderSide(color: Colors.white.withOpacity(0.06), width: 1),
-              ),
+                  top: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.06), width: 1)),
             ),
             child: Row(
               children: [
@@ -452,36 +488,52 @@ class _GamingTerminalScreenState extends State<GamingTerminalScreen> {
                       fontSize: 14,
                     ),
                     decoration: const InputDecoration(
-                      hintText: 'Enter command...',
+                      hintText: 'Run command... example: cs arena',
                       hintStyle: TextStyle(color: Colors.white38),
                       border: InputBorder.none,
                     ),
                     onSubmitted: (command) async {
-                      await _executeCommand(command);
-                      _commandController.clear();
+                      if (command.isNotEmpty) {
+                        await _executeCommand(command);
+                        _commandController.clear();
+                      }
                     },
                   ),
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [kNeonPurple.withOpacity(0.9), kNeonGreen.withOpacity(0.9)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                const SizedBox(width: 10),
+                InkWell(
+                  onTap: _isBusy
+                      ? null
+                      : () async {
+                          if (_commandController.text.isNotEmpty) {
+                            await _executeCommand(_commandController.text);
+                            _commandController.clear();
+                          }
+                        },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          kNeonPurple.withValues(alpha: 0.95),
+                          kNeonGreen.withValues(alpha: 0.95),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: kNeonGreen.withValues(alpha: 0.12),
+                          blurRadius: 14,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: IconButton(
-                    onPressed: _isBusy
-                        ? null
-                        : () async {
-                            if (_commandController.text.isNotEmpty) {
-                              await _executeCommand(_commandController.text);
-                              _commandController.clear();
-                            }
-                          },
-                    icon: const Icon(Icons.send, color: Colors.white),
+                    child:
+                        const Icon(Icons.send, color: Colors.white, size: 22),
                   ),
                 ),
               ],

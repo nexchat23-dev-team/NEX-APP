@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/ollama_service.dart';
 import '../utils/constants.dart';
 // Note: To make this "Real Time Smart", you'll eventually want to
 // import 'package:google_generative_ai/google_generative_ai.dart';
@@ -14,6 +15,7 @@ class AIChatScreen extends StatefulWidget {
 class _AIChatScreenState extends State<AIChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final OllamaService _ollamaService = OllamaService();
   final List<Map<String, dynamic>> _messages = [];
   bool _isLoading = false;
 
@@ -22,7 +24,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
     super.initState();
     _messages.add({
       'role': 'assistant',
-      'content': 'Welcome to the NEX Intelligence Hub. I am NEX AI, your advanced system assistant. How may I assist your operations today?',
+      'content':
+          'Welcome to the NEX Intelligence Hub. I am NEX AI, your advanced system assistant. How may I assist your operations today?',
       'time': DateTime.now().toIso8601String(),
     });
   }
@@ -34,8 +37,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
     super.dispose();
   }
 
-  // Expanded Logic: Simulated Intelligence + Real-Time Prep
-  void _sendMessage() async {
+  // Expanded Logic: Ollama-backed intelligence
+  Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty) return;
 
@@ -51,12 +54,16 @@ class _AIChatScreenState extends State<AIChatScreen> {
     _messageController.clear();
     _scrollToBottom();
 
-    // Simulation of AI processing (Replace this block with Gemini API call later)
-    await Future.delayed(const Duration(milliseconds: 1500));
+    String aiResponse;
+
+    try {
+      aiResponse = await _ollamaService.chat(message);
+    } catch (e) {
+      aiResponse =
+          '${_getSmartAIResponse(message)}\n\n(Note: Ollama is unavailable. Start the server at http://127.0.0.1:11434 or set OLLAMA_BASE_URL/OLLAMA_MODEL.)';
+    }
 
     if (!mounted) return;
-
-    String aiResponse = _getSmartAIResponse(message);
 
     setState(() {
       _messages.add({
@@ -88,10 +95,14 @@ class _AIChatScreenState extends State<AIChatScreen> {
     if (msg.contains('hello') || msg.contains('hi')) {
       return 'Greetings. My neural systems are fully operational. I can help you manage your marketplace ads, optimize your betting strategy, or explain NEX-APP features. What\'s on your mind?';
     }
-    if (msg.contains('token') || msg.contains('money') || msg.contains('balance')) {
+    if (msg.contains('token') ||
+        msg.contains('money') ||
+        msg.contains('balance')) {
       return 'Current Protocol: Tokens are the lifeblood of the NEX ecosystem. You can acquire them via the Marketplace or earn them through referrals. Would you like me to navigate you to the Token Management screen?';
     }
-    if (msg.contains('bet') || msg.contains('aviator') || msg.contains('mines')) {
+    if (msg.contains('bet') ||
+        msg.contains('aviator') ||
+        msg.contains('mines')) {
       return 'NEX Gaming Core: I detected interest in our high-stakes games. \n\n• Aviator: Watch the multiplier and cash out before the crash.\n• Mines: A game of precision—avoid the hidden explosives.\n• Spin: Pure algorithmic luck.\n\nStrategy tip: Always set a daily token limit!';
     }
     if (msg.contains('group') || msg.contains('invite')) {
@@ -105,142 +116,160 @@ class _AIChatScreenState extends State<AIChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: const Color(0xFF070B14), // Deeper, more "AI" black
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF0A111F),
-          elevation: 0,
-          centerTitle: false,
-          leadingWidth: 50,
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 10),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: kNeonBlue, size: 20),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-          title: Row(
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: kNeonBlue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: kNeonBlue.withValues(alpha: 0.3)),
-                    ),
-                    child: const Icon(Icons.psychology_outlined, color: kNeonBlue, size: 22),
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(color: kNeonGreen, shape: BoxShape.circle),
-                    ),
-                  )
-                ],
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('NEX INTELLIGENCE', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1)),
-                  Text('SYSTEM ONLINE', style: TextStyle(color: kNeonGreen.withValues(alpha: 0.8), fontSize: 9, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ],
+      backgroundColor: const Color(0xFF070B14), // Deeper, more "AI" black
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0A111F),
+        elevation: 0,
+        centerTitle: false,
+        leadingWidth: 50,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 10),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new,
+                color: kNeonBlue, size: 20),
+            onPressed: () => Navigator.pop(context),
           ),
         ),
-        body: Column(
+        title: Row(
           children: [
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController, // Use the controller we added in part 1
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                  itemCount: _messages.length,
-                  itemBuilder: (context, index) {
-                    final message = _messages[index];
-                    final isUser = message['role'] == 'user';
+            Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: kNeonBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: kNeonBlue.withValues(alpha: 0.3)),
+                  ),
+                  child: const Icon(Icons.psychology_outlined,
+                      color: kNeonBlue, size: 22),
+                ),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                        color: kNeonGreen, shape: BoxShape.circle),
+                  ),
+                )
+              ],
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('NEX INTELLIGENCE',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1)),
+                Text('SYSTEM ONLINE',
+                    style: TextStyle(
+                        color: kNeonGreen.withValues(alpha: 0.8),
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ],
+        ),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller:
+                  _scrollController, // Use the controller we added in part 1
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final message = _messages[index];
+                final isUser = message['role'] == 'user';
 
-                    return Align(
-                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        padding: const EdgeInsets.all(16),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.8,
+                return Align(
+                  alignment:
+                      isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(16),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isUser
+                          ? const Color(0xFF1A2135)
+                          : const Color(0xFF0D1E36),
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(20),
+                        topRight: const Radius.circular(20),
+                        bottomLeft: Radius.circular(isUser ? 20 : 4),
+                        bottomRight: Radius.circular(isUser ? 4 : 20),
+                      ),
+                      border: Border.all(
+                        color: isUser
+                            ? kNeonGreen.withValues(alpha: 0.3)
+                            : kNeonBlue.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isUser ? kNeonGreen : kNeonBlue)
+                              .withValues(alpha: 0.05),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8),
                         ),
-                        decoration: BoxDecoration(
-                          color: isUser ? const Color(0xFF1A2135) : const Color(0xFF0D1E36),
-                          borderRadius: BorderRadius.only(
-                            topLeft: const Radius.circular(20),
-                            topRight: const Radius.circular(20),
-                            bottomLeft: Radius.circular(isUser ? 20 : 4),
-                            bottomRight: Radius.circular(isUser ? 4 : 20),
-                          ),
-                          border: Border.all(
-                            color: isUser
-                                ? kNeonGreen.withValues(alpha: 0.3)
-                                : kNeonBlue.withValues(alpha: 0.3),
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (isUser ? kNeonGreen : kNeonBlue).withValues(alpha: 0.05),
-                              blurRadius: 15,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  isUser ? Icons.account_circle : Icons.terminal_rounded,
-                                  size: 14,
-                                  color: isUser ? kNeonGreen : kNeonBlue,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  isUser ? 'AUTHORIZED USER' : 'NEX CORE AI',
-                                  style: TextStyle(
-                                    color: isUser ? kNeonGreen : kNeonBlue,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                              ],
+                            Icon(
+                              isUser
+                                  ? Icons.account_circle
+                                  : Icons.terminal_rounded,
+                              size: 14,
+                              color: isUser ? kNeonGreen : kNeonBlue,
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(width: 8),
                             Text(
-                              message['content'] as String,
+                              isUser ? 'AUTHORIZED USER' : 'NEX CORE AI',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 15,
-                                height: 1.5,
-                                fontWeight: FontWeight.w500,
+                                color: isUser ? kNeonGreen : kNeonBlue,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              if (_isLoading)
-                _buildAILoadingIndicator(),
-              _buildMessageComposer(),
-            ],
+                        const SizedBox(height: 10),
+                        Text(
+                          message['content'] as String,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 15,
+                            height: 1.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-        );
-    }
+          if (_isLoading) _buildAILoadingIndicator(),
+          _buildMessageComposer(),
+        ],
+      ),
+    );
+  }
 
   Widget _buildAILoadingIndicator() {
     return Padding(
@@ -258,12 +287,17 @@ class _AIChatScreenState extends State<AIChatScreen> {
             SizedBox(
               width: 14,
               height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2, color: kNeonBlue),
+              child:
+                  CircularProgressIndicator(strokeWidth: 2, color: kNeonBlue),
             ),
             SizedBox(width: 12),
             Text(
               'PROCESSING NEURAL DATA...',
-              style: TextStyle(color: kNeonBlue, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+              style: TextStyle(
+                  color: kNeonBlue,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5),
             ),
           ],
         ),
@@ -276,7 +310,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       decoration: BoxDecoration(
         color: const Color(0xFF0A111F),
-        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+        border: Border(
+            top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
       ),
       child: Row(
         children: [
@@ -291,7 +326,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.mic_none_rounded, color: Colors.white38),
+                    icon: const Icon(Icons.mic_none_rounded,
+                        color: Colors.white38),
                     onPressed: () {},
                   ),
                   Expanded(
@@ -330,7 +366,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   ),
                 ],
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.black, size: 22),
+              child:
+                  const Icon(Icons.send_rounded, color: Colors.black, size: 22),
             ),
           ),
         ],
@@ -338,4 +375,3 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 } // End of State
-

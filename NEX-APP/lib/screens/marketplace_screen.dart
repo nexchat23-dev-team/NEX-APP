@@ -43,11 +43,36 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   Widget build(BuildContext context) {
     final tokenProvider = Provider.of<TokenProvider>(context);
     final packs = [
-      {'title': 'Starter Pack', 'subtitle': '5,000 tokens', 'amount': 5000, 'price': '\$0.99'},
-      {'title': 'Pro Bundle', 'subtitle': '20,000 tokens', 'amount': 20000, 'price': '\$3.99'},
-      {'title': 'Elite Pack', 'subtitle': '55,000 tokens', 'amount': 55000, 'price': '\$9.99'},
-      {'title': 'Mystery Crate', 'subtitle': 'Up to 80,000 tokens', 'amount': 80000, 'price': '\$7.99'},
-      {'title': 'Master Pack', 'subtitle': '120,000 tokens', 'amount': 120000, 'price': '\$19.99'},
+      {
+        'title': 'Starter Pack',
+        'subtitle': '5,000 tokens',
+        'amount': 5000,
+        'price': '\$0.99'
+      },
+      {
+        'title': 'Pro Bundle',
+        'subtitle': '20,000 tokens',
+        'amount': 20000,
+        'price': '\$3.99'
+      },
+      {
+        'title': 'Elite Pack',
+        'subtitle': '55,000 tokens',
+        'amount': 55000,
+        'price': '\$9.99'
+      },
+      {
+        'title': 'Mystery Crate',
+        'subtitle': 'Up to 80,000 tokens',
+        'amount': 80000,
+        'price': '\$7.99'
+      },
+      {
+        'title': 'Master Pack',
+        'subtitle': '120,000 tokens',
+        'amount': 120000,
+        'price': '\$19.99'
+      },
     ];
 
     return Scaffold(
@@ -67,17 +92,26 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF0F1E1B),
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: const Color(0xFF00B8F4).withValues(alpha: 0.16)),
+                  border: Border.all(
+                      color: const Color(0xFF00B8F4).withValues(alpha: 0.16)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.24), blurRadius: 18, offset: const Offset(0, 10)),
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.24),
+                        blurRadius: 18,
+                        offset: const Offset(0, 10)),
                   ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Quick token packages for instant play.', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    const Text('Quick token packages for instant play.',
+                        style: TextStyle(color: Colors.white70, fontSize: 14)),
                     const SizedBox(height: 16),
-                    Text('Your balance: ${tokenProvider.balance} tokens', style: const TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text('Your balance: ${tokenProvider.balance} tokens',
+                        style: const TextStyle(
+                            color: Color(0xFF25D366),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16)),
                   ],
                 ),
               ),
@@ -87,12 +121,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF0F1E1B),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFF00B8F4).withValues(alpha: 0.16)),
+                  border: Border.all(
+                      color: const Color(0xFF00B8F4).withValues(alpha: 0.16)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text('Promo code', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    const Text('Promo code',
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     TextField(
                       controller: promoController,
@@ -105,10 +142,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: () => redeemPromo(tokenProvider),
-                      child: const Text('Apply Code', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      child: const Text('Apply Code',
+                          style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(height: 10),
-                    Text(promoMessage, style: const TextStyle(color: Colors.white70)),
+                    Text(promoMessage,
+                        style: const TextStyle(color: Colors.white70)),
                   ],
                 ),
               ),
@@ -124,9 +165,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFF0F1E1B),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFF00B8F4).withValues(alpha: 0.16)),
+                        border: Border.all(
+                            color: const Color(0xFF00B8F4)
+                                .withValues(alpha: 0.16)),
                         boxShadow: [
-                          BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 14, offset: const Offset(0, 8)),
+                          BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.18),
+                              blurRadius: 14,
+                              offset: const Offset(0, 8)),
                         ],
                       ),
                       child: Column(
@@ -138,19 +184,29 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(pack['title'] as String, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                                    Text(pack['title'] as String,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold)),
                                     const SizedBox(height: 6),
-                                    Text(pack['subtitle'] as String, style: const TextStyle(color: Colors.white70)),
+                                    Text(pack['subtitle'] as String,
+                                        style: const TextStyle(
+                                            color: Colors.white70)),
                                   ],
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF25D366),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
-                                child: Text(pack['price'] as String, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                                child: Text(pack['price'] as String,
+                                    style: const TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
@@ -160,12 +216,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                               tokenProvider.addTokens(pack['amount'] as int);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Purchased ${pack['subtitle']}. Your balance has been updated.'),
+                                  content: Text(
+                                      'Purchased ${pack['subtitle']}. Your balance has been updated.'),
                                   backgroundColor: const Color(0xFF25D366),
                                 ),
                               );
                             },
-                            child: const Text('Buy now', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                            child: const Text('Buy now',
+                                style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),

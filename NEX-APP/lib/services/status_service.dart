@@ -1,12 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_service.dart';
 
 class StatusService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseClient _client = SupabaseService.client;
 
-  String? get currentUserId => _auth.currentUser?.uid;
+  String? get currentUserId => _client.auth.currentUser?.id;
 
   // Post a new status
   Future<String> postStatus({
@@ -18,37 +17,54 @@ class StatusService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final expiresAt = DateTime.now().add(expiresIn);
+      final expiresAt = DateTime.now().add(expiresIn).toUtc().toIso8601String();
+      final createdAt = DateTime.now().toUtc().toIso8601String();
 
-      final statusRef = await _firestore.collection('statuses').add({
+      final response = await _client.from('statuses').insert({
         'userId': currentUserId,
         'text': text,
         'mediaUrl': mediaUrl,
         'mediaType': mediaType,
         'expiresAt': expiresAt,
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': createdAt,
         'views': 0,
         'isActive': true,
-      });
+      }).select();
 
-      return statusRef.id;
+      if (response is List && response.isNotEmpty && response.first is Map<String, dynamic>) {
+        return response.first['id'].toString();
+      }
+
+      throw Exception('Unable to post status');
     } catch (e) {
       debugPrint('Error posting status: $e');
       rethrow;
     }
   }
 
-  // Get all active statuses (friends/following)
-  Stream<QuerySnapshot> getStatuses() {
+  // Get all active statuses
+  Stream<List<Map<String, dynamic>>> getStatuses() {
     try {
-      return _firestore
-          .collection('statuses')
-          .where('isActive', isEqualTo: true)
-          .where('expiresAt', isGreaterThan: DateTime.now())
-          .orderBy('expiresAt')
-          .orderBy('createdAt', descending: true)
-          .snapshots()
-          .handleError((e) {
+      return Stream<List<Map<String, dynamic>>>.fromFuture(() async {
+        final now = DateTime.now().toUtc().toIso8601String();
+        final response = await _client
+            .from('statuses')
+            .select()
+            .eq('isActive', true)
+            .gt('expiresAt', now);
+
+        if (response is! List) return <Map<String, dynamic>>[];
+
+        final statuses = (response as List<dynamic>)
+            .map((row) => Map<String, dynamic>.from(row as Map<String, dynamic>))
+            .toList();
+        statuses.sort((a, b) {
+          final aTime = a['createdAt']?.toString() ?? '';
+          final bTime = b['createdAt']?.toString() ?? '';
+          return bTime.compareTo(aTime);
+        });
+        return statuses;
+      }()).handleError((e) {
         debugPrint('Error getting statuses: $e');
       });
     } catch (e) {
@@ -58,17 +74,28 @@ class StatusService {
   }
 
   // Get user's own statuses
-  Stream<QuerySnapshot> getUserStatuses() {
+  Stream<List<Map<String, dynamic>>> getUserStatuses() {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
+      return Stream<List<Map<String, dynamic>>>.fromFuture(() async {
+        final response = await _client
+            .from('statuses')
+            .select()
+            .eq('userId', currentUserId.toString())
+            .eq('isActive', true);
 
-      return _firestore
-          .collection('statuses')
-          .where('userId', isEqualTo: currentUserId)
-          .where('isActive', isEqualTo: true)
-          .orderBy('createdAt', descending: true)
-          .snapshots()
-          .handleError((e) {
+        if (response is! List) return <Map<String, dynamic>>[];
+
+        final statuses = (response as List<dynamic>)
+            .map((row) => Map<String, dynamic>.from(row as Map<String, dynamic>))
+            .toList();
+        statuses.sort((a, b) {
+          final aTime = a['createdAt']?.toString() ?? '';
+          final bTime = b['createdAt']?.toString() ?? '';
+          return bTime.compareTo(aTime);
+        });
+        return statuses;
+      }()).handleError((e) {
         debugPrint('Error getting user statuses: $e');
       });
     } catch (e) {
@@ -82,16 +109,18 @@ class StatusService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final statusRef = _firestore.collection('statuses').doc(statusId);
-      await statusRef.update({
-        'views': FieldValue.increment(1),
-      });
+      final status = await _client.from('statuses').select().eq('id', statusId).single();
+      if (status != null && status is Map<String, dynamic>) {
+        final currentViews = status['views'] as int? ?? 0;
+        await _client.from('statuses').update({
+          'views': currentViews + 1,
+        }).eq('id', statusId);
+      }
 
-      // Record that user viewed this status
-      await _firestore.collection('statusViews').add({
+      await _client.from('statusViews').insert({
         'statusId': statusId,
         'userId': currentUserId,
-        'viewedAt': FieldValue.serverTimestamp(),
+        'viewedAt': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (e) {
       debugPrint('Error viewing status: $e');
@@ -104,15 +133,13 @@ class StatusService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final statusRef = _firestore.collection('statuses').doc(statusId);
-      final statusDoc = await statusRef.get();
+      final status = await _client.from('statuses').select().eq('id', statusId).single();
+      if (status == null) throw Exception('Status not found');
+      if ((status['userId']?.toString() ?? '') != currentUserId) {
+        throw Exception('Not authorized');
+      }
 
-      if (!statusDoc.exists) throw Exception('Status not found');
-
-      final statusData = statusDoc.data()!;
-      if (statusData['userId'] != currentUserId) throw Exception('Not authorized');
-
-      await statusRef.update({'isActive': false});
+      await _client.from('statuses').update({'isActive': false}).eq('id', statusId);
     } catch (e) {
       debugPrint('Error deleting status: $e');
       rethrow;
@@ -120,16 +147,26 @@ class StatusService {
   }
 
   // Get status viewers
-  Stream<QuerySnapshot> getStatusViewers(String statusId) {
+  Stream<List<Map<String, dynamic>>> getStatusViewers(String statusId) {
     try {
-      return _firestore
-          .collection('statusViews')
-          .where('statusId', isEqualTo: statusId)
-          .orderBy('viewedAt', descending: true)
-          .snapshots()
+      return _client
+          .from('statusViews')
+          .stream(primaryKey: ['id'])
+          .eq('statusId', statusId)
+          .map((rows) {
+            final viewers = rows
+                .map((row) => Map<String, dynamic>.from(row))
+                .toList();
+            viewers.sort((a, b) {
+              final aTime = a['viewedAt']?.toString() ?? '';
+              final bTime = b['viewedAt']?.toString() ?? '';
+              return bTime.compareTo(aTime);
+            });
+            return viewers;
+          })
           .handleError((e) {
-        debugPrint('Error getting status viewers: $e');
-      });
+            debugPrint('Error getting status viewers: $e');
+          });
     } catch (e) {
       debugPrint('Error setting up status viewers stream: $e');
       rethrow;
@@ -141,11 +178,11 @@ class StatusService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      await _firestore.collection('statusReactions').add({
+      await _client.from('statusReactions').insert({
         'statusId': statusId,
         'userId': currentUserId,
         'reaction': reaction,
-        'reactedAt': FieldValue.serverTimestamp(),
+        'reactedAt': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (e) {
       debugPrint('Error reacting to status: $e');
@@ -154,7 +191,7 @@ class StatusService {
   }
 
   // Get user's own statuses (alias for getUserStatuses for clarity)
-  Stream<QuerySnapshot> getMyStatuses() {
+  Stream<List<Map<String, dynamic>>> getMyStatuses() {
     return getUserStatuses();
   }
 
@@ -168,21 +205,19 @@ class StatusService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final statusRef = _firestore.collection('statuses').doc(statusId);
-      final statusDoc = await statusRef.get();
-
-      if (!statusDoc.exists) throw Exception('Status not found');
-
-      final statusData = statusDoc.data()!;
-      if (statusData['userId'] != currentUserId) throw Exception('Not authorized');
+      final status = await _client.from('statuses').select().eq('id', statusId).single();
+      if (status == null) throw Exception('Status not found');
+      if ((status['userId']?.toString() ?? '') != currentUserId) {
+        throw Exception('Not authorized');
+      }
 
       final updates = <String, dynamic>{};
       if (text != null) updates['text'] = text;
       if (mediaUrl != null) updates['mediaUrl'] = mediaUrl;
       if (mediaType != null) updates['mediaType'] = mediaType;
-      updates['updatedAt'] = FieldValue.serverTimestamp();
+      updates['updatedAt'] = DateTime.now().toUtc().toIso8601String();
 
-      await statusRef.update(updates);
+      await _client.from('statuses').update(updates).eq('id', statusId);
     } catch (e) {
       debugPrint('Error updating status: $e');
       rethrow;
@@ -190,16 +225,26 @@ class StatusService {
   }
 
   // Get reactions for a status
-  Stream<QuerySnapshot> getStatusReactions(String statusId) {
+  Stream<List<Map<String, dynamic>>> getStatusReactions(String statusId) {
     try {
-      return _firestore
-          .collection('statusReactions')
-          .where('statusId', isEqualTo: statusId)
-          .orderBy('reactedAt', descending: true)
-          .snapshots()
+      return _client
+          .from('statusReactions')
+          .stream(primaryKey: ['id'])
+          .eq('statusId', statusId)
+          .map((rows) {
+            final reactions = rows
+                .map((row) => Map<String, dynamic>.from(row))
+                .toList();
+            reactions.sort((a, b) {
+              final aTime = a['reactedAt']?.toString() ?? '';
+              final bTime = b['reactedAt']?.toString() ?? '';
+              return bTime.compareTo(aTime);
+            });
+            return reactions;
+          })
           .handleError((e) {
-        debugPrint('Error getting status reactions: $e');
-      });
+            debugPrint('Error getting status reactions: $e');
+          });
     } catch (e) {
       debugPrint('Error setting up status reactions stream: $e');
       return const Stream.empty();

@@ -12,7 +12,8 @@ class JoinGroupScreen extends StatefulWidget {
   State<JoinGroupScreen> createState() => _JoinGroupScreenState();
 }
 
-class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProviderStateMixin {
+class _JoinGroupScreenState extends State<JoinGroupScreen>
+    with SingleTickerProviderStateMixin {
   final ChatService _chatService = ChatService();
   final TextEditingController _inviteCodeController = TextEditingController();
   bool _isLoading = false;
@@ -61,12 +62,12 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
         _animController.forward(from: 0);
       } else {
         setState(() {
-          _errorMessage = '❌ Invalid invite code. Please check and try again.';
+          _errorMessage = 'Invalid invite code. Please check and try again.';
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = '⚠️ Error: $e';
+        _errorMessage = 'Error: $e';
       });
     } finally {
       setState(() {
@@ -89,7 +90,9 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
       if (mounted) {
         if (result != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('✅ Successfully joined group!'), backgroundColor: kNeonGreen),
+            const SnackBar(
+                content: Text('Successfully joined group.'),
+                backgroundColor: kNeonGreen),
           );
 
           Navigator.pushReplacementNamed(
@@ -100,7 +103,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('⏳ Join request sent! Waiting for admin approval.'),
+              content: Text('Join request sent. Waiting for admin approval.'),
               duration: Duration(seconds: 3),
               backgroundColor: kNeonBlue,
             ),
@@ -115,7 +118,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -130,7 +133,8 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
     return Scaffold(
       backgroundColor: kDarkBackground,
       appBar: AppBar(
-        title: const Text('👥 Join Group', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Join Group',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: kPrimaryBlue,
         elevation: 0,
       ),
@@ -144,12 +148,16 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [kNeonPurple.withValues(alpha: 0.2), kNeonBlue.withValues(alpha: 0.1)],
+                  colors: [
+                    kNeonPurple.withValues(alpha: 0.2),
+                    kNeonBlue.withValues(alpha: 0.1)
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: kNeonPurple.withValues(alpha: 0.3), width: 2),
+                border: Border.all(
+                    color: kNeonPurple.withValues(alpha: 0.3), width: 2),
               ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,7 +166,10 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
                   SizedBox(height: 12),
                   Text(
                     'Find & Join Groups',
-                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 8),
                   Text(
@@ -171,17 +182,25 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
             const SizedBox(height: 28),
 
             // Invite Code Input
-            const Text('📌 Invite Code', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+            const Text('Invite Code',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             TextField(
               controller: _inviteCodeController,
               textCapitalization: TextCapitalization.characters,
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 hintText: 'e.g., ABC123XYZ',
                 hintStyle: const TextStyle(color: Colors.white30),
                 prefixIcon: const Icon(Icons.vpn_key, color: kNeonBlue),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: const BorderSide(color: kNeonBlue, width: 2),
@@ -193,13 +212,19 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
             // Search Button
             ElevatedButton.icon(
               onPressed: _isLoading ? null : _searchGroup,
-              icon: _isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.search),
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.search),
               label: Text(_isLoading ? 'Searching...' : 'Search Group'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: kNeonBlue,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 elevation: 4,
               ),
             ),
@@ -214,7 +239,8 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                 ),
-                child: Text(_errorMessage, style: const TextStyle(color: Colors.red, fontSize: 14)),
+                child: Text(_errorMessage,
+                    style: const TextStyle(color: Colors.red, fontSize: 14)),
               ),
 
             // Group Preview
@@ -224,26 +250,36 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [kNeonGreen.withValues(alpha: 0.15), kNeonBlue.withValues(alpha: 0.1)],
+                    colors: [
+                      kNeonGreen.withValues(alpha: 0.15),
+                      kNeonBlue.withValues(alpha: 0.1)
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: kNeonGreen.withValues(alpha: 0.4), width: 2),
+                  border: Border.all(
+                      color: kNeonGreen.withValues(alpha: 0.4), width: 2),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '✅ Group Found!',
-                      style: TextStyle(color: kNeonGreen, fontSize: 16, fontWeight: FontWeight.bold),
+                      'Group Found',
+                      style: TextStyle(
+                          color: kNeonGreen,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
-                    _buildInfoRow('📛 Group Name', _groupPreview?['name'] ?? 'Unknown'),
+                    _buildInfoRow(
+                        'Group Name', _groupPreview?['name'] ?? 'Unknown'),
                     const SizedBox(height: 12),
-                    _buildInfoRow('👥 Members', '${_groupPreview?['memberCount'] ?? 0}'),
+                    _buildInfoRow(
+                        'Members', '${_groupPreview?['memberCount'] ?? 0}'),
                     const SizedBox(height: 12),
-                    _buildInfoRow('📝 Description', _groupPreview?['description'] ?? 'No description'),
+                    _buildInfoRow('Description',
+                        _groupPreview?['description'] ?? 'No description'),
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
                       onPressed: _isLoading ? null : _joinGroup,
@@ -254,7 +290,8 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         elevation: 4,
                       ),
                     ),
@@ -273,14 +310,20 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> with SingleTickerProv
       children: [
         Expanded(
           flex: 2,
-          child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold)),
+          child: Text(label,
+              style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold)),
         ),
         Expanded(
           flex: 3,
-          child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+          child: Text(value,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
         ),
       ],
     );
   }
 }
-

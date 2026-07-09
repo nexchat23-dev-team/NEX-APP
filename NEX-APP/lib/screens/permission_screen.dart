@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 import 'home_screen.dart';
+import 'profile_screen.dart';
 
 class PermissionScreen extends StatefulWidget {
   static const routeName = '/permissions';
@@ -14,10 +15,15 @@ class PermissionScreen extends StatefulWidget {
   State<PermissionScreen> createState() => _PermissionScreenState();
 }
 
-class _PermissionScreenState extends State<PermissionScreen> {
+class _PermissionScreenState extends State<PermissionScreen>
+    with WidgetsBindingObserver {
   bool _isLoading = true;
+  bool _isProcessingPermission = false;
+  String? _selectedPermissionKey = 'storage'; // Default to storage
   final Map<String, PermissionStatus> _permissions = {};
+  final Set<String> _selectedPermissions = {};
   final List<Map<String, dynamic>> _permissionList = [
+    // Extended permission list: added contacts and overlay support
     {
       'key': 'camera',
       'permission': Permission.camera,
@@ -51,6 +57,46 @@ class _PermissionScreenState extends State<PermissionScreen> {
       'color': Colors.orange,
     },
     {
+      'key': 'bluetooth',
+      'permission': Permission.bluetooth,
+      'title': 'Bluetooth',
+      'subtitle': 'Required for nearby & offline features',
+      'icon': Icons.bluetooth,
+      'color': Colors.cyan,
+    },
+    {
+      'key': 'bluetoothScan',
+      'permission': Permission.bluetoothScan,
+      'title': 'Bluetooth Scan',
+      'subtitle': 'Required to discover nearby devices',
+      'icon': Icons.wifi_tethering,
+      'color': Colors.cyan,
+    },
+    {
+      'key': 'bluetoothConnect',
+      'permission': Permission.bluetoothConnect,
+      'title': 'Bluetooth Connect',
+      'subtitle': 'Required to connect to nearby devices',
+      'icon': Icons.usb,
+      'color': Colors.cyan,
+    },
+    {
+      'key': 'contacts',
+      'permission': Permission.contacts,
+      'title': 'Contacts',
+      'subtitle': 'Access contacts to invite friends',
+      'icon': Icons.contacts,
+      'color': kNeonGreen,
+    },
+    {
+      'key': 'overlay',
+      'permission': Permission.systemAlertWindow,
+      'title': 'Display over other apps',
+      'subtitle': 'Required for in-call overlays and persistent UI',
+      'icon': Icons.layers,
+      'color': Colors.deepPurple,
+    },
+    {
       'key': 'backgroundData',
       'permission': null, // Special permission handled differently
       'title': 'Background Data',
@@ -64,7 +110,21 @@ class _PermissionScreenState extends State<PermissionScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkFirstTimeUser();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPermissions();
+    }
   }
 
   Future<void> _checkFirstTimeUser() async {
@@ -95,7 +155,8 @@ class _PermissionScreenState extends State<PermissionScreen> {
 
       if (isSpecial && key == 'backgroundData') {
         // Special handling for background data permission
-        _permissions[key] = PermissionStatus.granted; // Assume granted for UI purposes
+        _permissions[key] =
+            PermissionStatus.granted; // Assume granted for UI purposes
       } else {
         final permission = perm['permission'] as Permission;
         final status = await permission.status;
@@ -106,46 +167,118 @@ class _PermissionScreenState extends State<PermissionScreen> {
   }
 
   Future<void> _requestPermission(String key, Permission? permission) async {
+    if (_isProcessingPermission) return;
+
     if (key == 'backgroundData') {
-      // Special handling for background data permission
       _showBackgroundDataDialog();
       return;
     }
 
     setState(() {
+      _isProcessingPermission = true;
+      _selectedPermissionKey = key;
+      _selectedPermissions.add(key);
       _permissions[key] = PermissionStatus.limited;
     });
 
-    final status = await permission!.request();
+    try {
+      final status = await _requestPermissionStatus(key, permission);
 
-    setState(() {
-      _permissions[key] = status;
-    });
+      if (!mounted) return;
+      setState(() => _permissions[key] = status);
 
-    // Check if all permissions are now granted
-    if (_allPermissionsGranted) {
-      await _markFirstTimeComplete();
+      if (!status.isGranted) {
+        await _handleDeniedPermission(key, status);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessingPermission = false);
+      }
+    }
+  }
+
+  Future<PermissionStatus> _requestPermissionStatus(
+    String key,
+    Permission? permission,
+  ) async {
+    if (key == 'overlay') {
+      final status = await Permission.systemAlertWindow.request();
+      if (!status.isGranted) {
+        await openAppSettings();
+      }
+      return status;
+    }
+
+    return await permission!.request();
+  }
+
+  Future<void> _handleDeniedPermission(
+      String key, PermissionStatus status) async {
+    if (status.isPermanentlyDenied) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: kSurfaceColor,
+          title: const Text('Permission required',
+              style: TextStyle(color: Colors.white)),
+          content: const Text(
+              'This permission is permanently denied. Open app settings to enable it.',
+              style: TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
+            ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  openAppSettings();
+                },
+                child: const Text('Open Settings')),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (key == 'overlay') {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Open Settings to allow Display over other apps.')),
+      );
     }
   }
 
   Future<void> _requestAllPermissions() async {
-    setState(() => _isLoading = true);
+    if (_isProcessingPermission) return;
 
-    for (var perm in _permissionList) {
-      final key = perm['key'] as String;
-      final isSpecial = perm['isSpecial'] as bool? ?? false;
+    setState(() => _isProcessingPermission = true);
 
-      if (isSpecial && key == 'backgroundData') {
-        // Background data is handled separately
-        _permissions[key] = PermissionStatus.granted;
-      } else {
-        final permission = perm['permission'] as Permission;
-        final status = await permission.request();
+    try {
+      for (var perm in _permissionList) {
+        final key = perm['key'] as String;
+        final isSpecial = perm['isSpecial'] as bool? ?? false;
+
+        if (isSpecial && key == 'backgroundData') {
+          _permissions[key] = PermissionStatus.granted;
+          continue;
+        }
+
+        final permission = perm['permission'] as Permission?;
+        final status = await _requestPermissionStatus(key, permission);
         _permissions[key] = status;
+        _selectedPermissions.add(key);
+
+        if (key == 'overlay' && !status.isGranted) {
+          await openAppSettings();
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessingPermission = false);
       }
     }
-
-    setState(() => _isLoading = false);
   }
 
   void _showBackgroundDataDialog() {
@@ -167,7 +300,8 @@ class _PermissionScreenState extends State<PermissionScreen> {
             const SizedBox(width: 12),
             const Text(
               'Background Data Usage',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -242,7 +376,8 @@ class _PermissionScreenState extends State<PermissionScreen> {
                                 ),
                               ],
                             ),
-                            child: const Icon(Icons.security, color: Colors.white, size: 48),
+                            child: const Icon(Icons.security,
+                                color: Colors.white, size: 48),
                           ),
                           const SizedBox(height: 24),
                           const Text(
@@ -265,15 +400,19 @@ class _PermissionScreenState extends State<PermissionScreen> {
                           const SizedBox(height: 16),
                           // Progress indicator
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
                               color: kNeonBlue.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: kNeonBlue.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color: kNeonBlue.withValues(alpha: 0.3)),
                             ),
                             child: Text(
                               '$_grantedCount/${_permissionList.length} permissions granted',
-                              style: const TextStyle(color: kNeonBlue, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                  color: kNeonBlue,
+                                  fontWeight: FontWeight.w500),
                             ),
                           ),
                         ],
@@ -288,7 +427,8 @@ class _PermissionScreenState extends State<PermissionScreen> {
                         (context, index) {
                           final perm = _permissionList[index];
                           final key = perm['key'] as String;
-                          final status = _permissions[key] ?? PermissionStatus.denied;
+                          final status =
+                              _permissions[key] ?? PermissionStatus.denied;
                           final isGranted = status.isGranted;
                           final color = perm['color'] as Color;
                           final isSpecial = perm['isSpecial'] as bool? ?? false;
@@ -322,7 +462,8 @@ class _PermissionScreenState extends State<PermissionScreen> {
                                   color: color.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Icon(perm['icon'] as IconData, color: color),
+                                child: Icon(perm['icon'] as IconData,
+                                    color: color),
                               ),
                               title: Text(
                                 perm['title'] as String,
@@ -338,18 +479,29 @@ class _PermissionScreenState extends State<PermissionScreen> {
                                   fontSize: 12,
                                 ),
                               ),
+                              onTap: isGranted
+                                  ? null
+                                  : () => setState(
+                                      () => _selectedPermissionKey = key),
+                              selected:
+                                  _selectedPermissionKey == key && !isGranted,
+                              selectedTileColor: color.withValues(alpha: 0.1),
                               trailing: isGranted
                                   ? Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: kNeonGreen.withValues(alpha: 0.2),
+                                        color:
+                                            kNeonGreen.withValues(alpha: 0.2),
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(Icons.check, color: kNeonGreen, size: 20),
+                                      child: const Icon(Icons.check,
+                                          color: kNeonGreen, size: 20),
                                     )
                                   : TextButton(
-                                      onPressed: () => _requestPermission(key, perm['permission'] as Permission?),
-                                      child: Text(isSpecial ? 'Learn More' : 'Allow'),
+                                      onPressed: () => _requestPermission(key,
+                                          perm['permission'] as Permission?),
+                                      child: Text(
+                                          isSpecial ? 'Learn More' : 'Allow'),
                                     ),
                             ),
                           );
@@ -364,6 +516,83 @@ class _PermissionScreenState extends State<PermissionScreen> {
                       padding: const EdgeInsets.all(24),
                       child: Column(
                         children: [
+                          // Allow current permission button
+                          if (_selectedPermissionKey != null &&
+                              (_permissions[_selectedPermissionKey] ??
+                                      PermissionStatus.denied)
+                                  .isDenied) ...[
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [kNeonGreen, Color(0xFF00D9A3)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: kNeonGreen.withValues(alpha: 0.4),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
+                                onPressed: _isProcessingPermission
+                                    ? null
+                                    : () async {
+                                        if (_selectedPermissionKey != null) {
+                                          final perm =
+                                              _permissionList.firstWhere(
+                                            (p) =>
+                                                p['key'] ==
+                                                _selectedPermissionKey,
+                                            orElse: () => <String, dynamic>{},
+                                          );
+                                          if (perm.isNotEmpty) {
+                                            await _requestPermission(
+                                              _selectedPermissionKey!,
+                                              perm['permission'] as Permission?,
+                                            );
+                                          }
+                                        }
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.done, color: Colors.white),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Allow "${_permissionList.firstWhere((p) => p['key'] == _selectedPermissionKey, orElse: () => {
+                                              'title': 'Permission'
+                                            })['title']}"',
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           if (!_allPermissionsGranted) ...[
                             Container(
                               width: double.infinity,
@@ -383,14 +612,16 @@ class _PermissionScreenState extends State<PermissionScreen> {
                                 ],
                               ),
                               child: ElevatedButton(
-                                onPressed: () async {
-                                  await _requestAllPermissions();
-                                  await _markFirstTimeComplete();
-                                },
+                                onPressed: _isProcessingPermission
+                                    ? null
+                                    : () async {
+                                        await _requestAllPermissions();
+                                      },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   shadowColor: Colors.transparent,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
@@ -418,23 +649,25 @@ class _PermissionScreenState extends State<PermissionScreen> {
                             width: double.infinity,
                             child: OutlinedButton(
                               onPressed: () async {
-                                // Mark first time complete and go to home
+                                final navigator = Navigator.of(context);
                                 await _markFirstTimeComplete();
-                                if (mounted) {
-                                  Navigator.pushReplacementNamed(context, HomeScreen.routeName);
-                                }
+                                if (!mounted) return;
+                                navigator.pushReplacementNamed(
+                                    ProfileScreen.routeName);
                               },
                               style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                side: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.3)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
-                              child: Text(
-                                _allPermissionsGranted ? 'Continue' : 'Skip for now',
+                              child: const Text(
+                                'Continue to Profile',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.7),
+                                  color: Colors.white,
                                   fontSize: 16,
                                 ),
                               ),
@@ -458,5 +691,3 @@ class _PermissionScreenState extends State<PermissionScreen> {
     );
   }
 }
-
-

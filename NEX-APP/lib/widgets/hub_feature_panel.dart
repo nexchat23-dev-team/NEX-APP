@@ -42,7 +42,11 @@ class HubFeaturePanel extends StatelessWidget {
         children: [
           const Text(
             'QUICK ACCESS',
-            style: TextStyle(color: kNeonPurple, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1.5),
+            style: TextStyle(
+                color: kNeonPurple,
+                fontWeight: FontWeight.w900,
+                fontSize: 11,
+                letterSpacing: 1.5),
           ),
           const SizedBox(height: 16),
           GestureDetector(
@@ -56,21 +60,29 @@ class HubFeaturePanel extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.search_rounded, color: Colors.white54, size: 20),
+                  const Icon(Icons.search_rounded,
+                      color: Colors.white54, size: 20),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Search the network',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontSize: 14),
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: kNeonPurple,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text('SEARCH', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+                    child: const Text('SEARCH',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12)),
                   ),
                 ],
               ),
@@ -126,9 +138,15 @@ class _HubFeatureCard extends StatelessWidget {
                 child: Icon(feature.icon, color: feature.color, size: 24),
               ),
               const SizedBox(height: 16),
-              Text(feature.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
+              Text(feature.title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14)),
               const SizedBox(height: 8),
-              Text(feature.subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12, height: 1.4)),
+              Text(feature.subtitle,
+                  style: const TextStyle(
+                      color: Colors.white54, fontSize: 12, height: 1.4)),
             ],
           ),
         ),

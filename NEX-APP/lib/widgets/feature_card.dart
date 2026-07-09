@@ -26,7 +26,8 @@ class FeatureCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF0E1B33),
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFF00FF66).withValues(alpha: 0.18)),
+            border: Border.all(
+                color: const Color(0xFF00FF66).withValues(alpha: 0.18)),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF00FF66).withValues(alpha: 0.12),
@@ -57,13 +58,20 @@ class FeatureCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(title,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16)),
                     const SizedBox(height: 6),
-                    Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 14)),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 18),
+              const Icon(Icons.arrow_forward_ios,
+                  color: Colors.white54, size: 18),
             ],
           ),
         ),

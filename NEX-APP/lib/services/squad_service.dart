@@ -1,14 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_service.dart';
 
 class SquadService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseClient _client = SupabaseService.client;
 
-  String? get currentUserId => _auth.currentUser?.uid;
+  String? get currentUserId => _client.auth.currentUser?.id;
 
-  // Create a new squad
   Future<String> createSquad({
     required String name,
     required String description,
@@ -18,80 +16,73 @@ class SquadService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final squadRef = await _firestore.collection('squads').add({
+      final response = await _client.from('squads').insert({
         'name': name,
         'description': description,
         'game': game,
         'leaderId': currentUserId,
         'members': [currentUserId],
         'maxMembers': maxMembers,
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
         'isActive': true,
-      });
+      }).select().single();
 
-      return squadRef.id;
+      if (response is Map<String, dynamic>) {
+        return response['id']?.toString() ?? '';
+      }
+      throw Exception('Unable to create squad');
     } catch (e) {
       debugPrint('Error creating squad: $e');
       rethrow;
     }
   }
 
-  // Join a squad
   Future<void> joinSquad(String squadId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final squadRef = _firestore.collection('squads').doc(squadId);
-      final squadDoc = await squadRef.get();
+      final squad = await _client.from('squads').select().eq('id', squadId).maybeSingle();
+      if (squad == null || squad is! Map<String, dynamic>) {
+        throw Exception('Squad not found');
+      }
 
-      if (!squadDoc.exists) throw Exception('Squad not found');
-
-      final squadData = squadDoc.data()!;
-      final members = List<String>.from(squadData['members'] ?? []);
-      final maxMembers = squadData['maxMembers'] ?? 5;
+      final members = List<String>.from(squad['members'] ?? []);
+      final maxMembers = squad['maxMembers'] ?? 5;
 
       if (members.contains(currentUserId)) throw Exception('Already a member');
       if (members.length >= maxMembers) throw Exception('Squad is full');
 
       members.add(currentUserId!);
-      await squadRef.update({'members': members});
+      await _client.from('squads').update({'members': members}).eq('id', squadId);
     } catch (e) {
       debugPrint('Error joining squad: $e');
       rethrow;
     }
   }
 
-  // Leave a squad
   Future<void> leaveSquad(String squadId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final squadRef = _firestore.collection('squads').doc(squadId);
-      final squadDoc = await squadRef.get();
+      final squad = await _client.from('squads').select().eq('id', squadId).maybeSingle();
+      if (squad == null || squad is! Map<String, dynamic>) {
+        throw Exception('Squad not found');
+      }
 
-      if (!squadDoc.exists) throw Exception('Squad not found');
-
-      final squadData = squadDoc.data()!;
-      final members = List<String>.from(squadData['members'] ?? []);
-      final leaderId = squadData['leaderId'];
+      final members = List<String>.from(squad['members'] ?? []);
+      final leaderId = squad['leaderId']?.toString();
 
       if (!members.contains(currentUserId)) throw Exception('Not a member');
 
-      // If leaving member is leader, transfer leadership or disband
       if (currentUserId == leaderId && members.length > 1) {
-        // Transfer to another member
         members.remove(currentUserId);
         final newLeader = members.first;
-        await squadRef.update({
-          'members': members,
-          'leaderId': newLeader,
-        });
+        await _client.from('squads').update({'members': members, 'leaderId': newLeader}).eq('id', squadId);
       } else if (members.length == 1) {
-        // Disband squad
-        await squadRef.delete();
+        await _client.from('squads').delete().eq('id', squadId);
       } else {
         members.remove(currentUserId);
-        await squadRef.update({'members': members});
+        await _client.from('squads').update({'members': members}).eq('id', squadId);
       }
     } catch (e) {
       debugPrint('Error leaving squad: $e');
@@ -99,43 +90,49 @@ class SquadService {
     }
   }
 
-  // Get squads stream
-  Stream<QuerySnapshot> getSquads() {
+  Stream<List<Map<String, dynamic>>> getSquads() {
     try {
-      return _firestore
-          .collection('squads')
-          .where('isActive', isEqualTo: true)
-          .orderBy('createdAt', descending: true)
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting squads: $e');
-      });
+      return Stream<List<Map<String, dynamic>>>.fromFuture(() async {
+        final response = await _client
+            .from('squads')
+            .select()
+            .eq('isActive', true)
+            .order('createdAt', ascending: false);
+
+        if (response is! List) return <Map<String, dynamic>>[];
+        return (response as List<dynamic>)
+            .map((row) => Map<String, dynamic>.from(row as Map<String, dynamic>))
+            .toList();
+      }()).handleError((e) {debugPrint('Error getting squads: $e');});
     } catch (e) {
       debugPrint('Error setting up squads stream: $e');
       rethrow;
     }
   }
 
-  // Get user's squads
-  Stream<QuerySnapshot> getUserSquads() {
+  Stream<List<Map<String, dynamic>>> getUserSquads() {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      return _firestore
-          .collection('squads')
-          .where('members', arrayContains: currentUserId)
-          .where('isActive', isEqualTo: true)
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting user squads: $e');
-      });
+      return Stream<List<Map<String, dynamic>>>.fromFuture(() async {
+        final response = await _client
+            .from('squads')
+            .select()
+            .contains('members', [currentUserId!])
+            .eq('isActive', true)
+            .order('createdAt', ascending: false);
+
+        if (response is! List) return <Map<String, dynamic>>[];
+        return (response as List<dynamic>)
+            .map((row) => Map<String, dynamic>.from(row as Map<String, dynamic>))
+            .toList();
+      }()).handleError((e) {debugPrint('Error getting user squads: $e');});
     } catch (e) {
       debugPrint('Error setting up user squads stream: $e');
       rethrow;
     }
   }
 
-  // Send message in squad
   Future<void> sendSquadMessage({
     required String squadId,
     required String text,
@@ -144,15 +141,12 @@ class SquadService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      await _firestore
-          .collection('squads')
-          .doc(squadId)
-          .collection('messages')
-          .add({
+      await _client.from('squadMessages').insert({
+        'squadId': squadId,
         'senderId': currentUserId,
         'text': text,
         'type': type,
-        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (e) {
       debugPrint('Error sending squad message: $e');
@@ -160,25 +154,25 @@ class SquadService {
     }
   }
 
-  // Get squad messages
-  Stream<QuerySnapshot> getSquadMessages(String squadId) {
+  Stream<List<Map<String, dynamic>>> getSquadMessages(String squadId) {
     try {
-      return _firestore
-          .collection('squads')
-          .doc(squadId)
-          .collection('messages')
-          .orderBy('timestamp', descending: true)
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting squad messages: $e');
-      });
+      return _client
+          .from('squadMessages')
+          .stream(primaryKey: ['id'])
+          .eq('squadId', squadId)
+          .order('timestamp', ascending: false)
+          .map((rows) {
+            return rows
+                .map((row) => Map<String, dynamic>.from(row))
+                .toList();
+          })
+          .handleError((e) {debugPrint('Error getting squad messages: $e');});
     } catch (e) {
       debugPrint('Error setting up squad messages stream: $e');
       rethrow;
     }
   }
 
-  // Create session in squad
   Future<String> createSquadSession({
     required String squadId,
     required String title,
@@ -189,40 +183,41 @@ class SquadService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final sessionRef = await _firestore
-          .collection('squads')
-          .doc(squadId)
-          .collection('sessions')
-          .add({
+      final response = await _client.from('squadSessions').insert({
+        'squadId': squadId,
         'title': title,
         'description': description,
         'gameMode': gameMode,
-        'startTime': startTime,
+        'startTime': startTime.toUtc().toIso8601String(),
         'creatorId': currentUserId,
         'participants': [currentUserId],
-        'status': 'scheduled', // scheduled, active, completed, cancelled
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        'status': 'scheduled',
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+      }).select().single();
 
-      return sessionRef.id;
+      if (response is Map<String, dynamic>) {
+        return response['id']?.toString() ?? '';
+      }
+      throw Exception('Unable to create squad session');
     } catch (e) {
       debugPrint('Error creating squad session: $e');
       rethrow;
     }
   }
 
-  // Get squad sessions
-  Stream<QuerySnapshot> getSquadSessions(String squadId) {
+  Stream<List<Map<String, dynamic>>> getSquadSessions(String squadId) {
     try {
-      return _firestore
-          .collection('squads')
-          .doc(squadId)
-          .collection('sessions')
-          .orderBy('startTime')
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting squad sessions: $e');
-      });
+      return _client
+          .from('squadSessions')
+          .stream(primaryKey: ['id'])
+          .eq('squadId', squadId)
+          .order('startTime', ascending: true)
+          .map((rows) {
+            return rows
+                .map((row) => Map<String, dynamic>.from(row))
+                .toList();
+          })
+          .handleError((e) {debugPrint('Error getting squad sessions: $e');});
     } catch (e) {
       debugPrint('Error setting up squad sessions stream: $e');
       rethrow;

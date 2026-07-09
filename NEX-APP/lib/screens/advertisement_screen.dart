@@ -1,5 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import '../services/supabase_service.dart';
 import 'bet_screen.dart';
 import 'marketplace_screen.dart';
 import 'settings_screen.dart';
@@ -14,11 +15,12 @@ class AdvertisementScreen extends StatefulWidget {
 }
 
 class _AdvertisementScreenState extends State<AdvertisementScreen> {
-  final CollectionReference<Map<String, dynamic>> _adsCollection =
-      FirebaseFirestore.instance.collection('advertisements');
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> get _adsStream =>
-      _adsCollection.orderBy('createdAt', descending: true).snapshots();
+  Stream<List<Map<String, dynamic>>> get _adsStream {
+    return SupabaseService.client
+        .from('advertisements')
+        .stream(primaryKey: ['id'])
+        .order('createdAt', ascending: false);
+  }
 
   final List<Map<String, dynamic>> _sampleAds = [
     {
@@ -82,18 +84,17 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                   ),
                 ],
               ),
-              child: const Icon(Icons.campaign_rounded, color: Colors.white, size: 18),
+              child: const Icon(Icons.campaign_rounded,
+                  color: Colors.white, size: 18),
             ),
             const SizedBox(width: 12),
-            const Text(
-                'Marketplace Ads',
+            const Text('Marketplace Ads',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.5,
-                )
-            ),
+                )),
           ],
         ),
         actions: [
@@ -114,14 +115,16 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
         backgroundColor: kNeonBlue,
         elevation: 4,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Create Ad', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        label: const Text('Create Ad',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         onPressed: () => _showCreateAdDialog(context),
       ),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: _adsStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return _buildAdsList(_sampleAds, errorMessage: 'Live feed unavailable. Showing local ads.');
+            return _buildAdsList(_sampleAds,
+                errorMessage: 'Live feed unavailable. Showing local ads.');
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -132,20 +135,19 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
             );
           }
 
-          final docs = snapshot.data?.docs ?? [];
+          final docs = snapshot.data ?? [];
           if (docs.isEmpty) {
             return _buildEmptyAdsState();
           }
 
           final ads = docs.map((doc) {
-            final data = doc.data();
             return {
-              'id': doc.id,
-              'title': data['title'] ?? 'Exclusive Deal',
-              'description': data['description'] ?? 'No description provided.',
-              'type': data['type'] ?? 'promo',
-              'cta': data['cta'] ?? 'View Details',
-              'expires': data['expires'],
+              'id': doc['id']?.toString() ?? 'unknown',
+              'title': doc['title'] ?? 'Exclusive Deal',
+              'description': doc['description'] ?? 'No description provided.',
+              'type': doc['type'] ?? 'promo',
+              'cta': doc['cta'] ?? 'View Details',
+              'expires': doc['expires'],
             };
           }).toList();
 
@@ -156,7 +158,10 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
   }
 
   // Professional helper for AppBar action buttons
-  Widget _buildAppBarButton({required IconData icon, required Color color, required VoidCallback onTap}) {
+  Widget _buildAppBarButton(
+      {required IconData icon,
+      required Color color,
+      required VoidCallback onTap}) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       width: 40,
@@ -172,7 +177,6 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
       ),
     );
   }
-
 
   Widget _buildAdCard(Map<String, dynamic> ad) {
     final Color adColor = _getAdTypeColor(ad['type'] as String);
@@ -236,7 +240,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                         ),
                         const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: adColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20),
@@ -300,7 +305,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                       child: Text(
                         ad['cta'] as String,
                         style: const TextStyle(
-                          color: Colors.black, // High contrast for professional accessibility
+                          color: Colors
+                              .black, // High contrast for professional accessibility
                           fontWeight: FontWeight.w900,
                           fontSize: 15,
                           letterSpacing: 0.5,
@@ -348,7 +354,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
       onRefresh: () async => setState(() {}),
       color: kNeonBlue,
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 100), // Extra bottom padding for FAB
+        padding: const EdgeInsets.fromLTRB(
+            20, 20, 20, 100), // Extra bottom padding for FAB
         itemCount: ads.length + (errorMessage != null ? 1 : 0),
         itemBuilder: (context, index) {
           if (errorMessage != null && index == 0) {
@@ -375,7 +382,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
           const Icon(Icons.error_outline, color: Colors.redAccent),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(message, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+            child: Text(message,
+                style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
           ),
         ],
       ),
@@ -389,11 +397,15 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.campaign_outlined, size: 80, color: Colors.white.withValues(alpha: 0.15)),
+            Icon(Icons.campaign_outlined,
+                size: 80, color: Colors.white.withValues(alpha: 0.15)),
             const SizedBox(height: 24),
             const Text(
               'Marketplace is Quiet',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -439,21 +451,28 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                           color: kNeonBlue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.add_chart_rounded, color: kNeonBlue, size: 20),
+                        child: const Icon(Icons.add_chart_rounded,
+                            color: kNeonBlue, size: 20),
                       ),
                       const SizedBox(width: 12),
                       const Text(
                         'New Advertisement',
-                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900),
                       ),
                     ],
                   ),
                   const SizedBox(height: 24),
                   _buildInputLabel('AD TITLE'),
-                  _buildStyledTextField(titleController, 'e.g., Summer Token Sale'),
+                  _buildStyledTextField(
+                      titleController, 'e.g., Summer Token Sale'),
                   const SizedBox(height: 16),
                   _buildInputLabel('DESCRIPTION'),
-                  _buildStyledTextField(descriptionController, 'What is your ad about?', maxLines: 3),
+                  _buildStyledTextField(
+                      descriptionController, 'What is your ad about?',
+                      maxLines: 3),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -462,7 +481,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildInputLabel('BUTTON TEXT'),
-                            _buildStyledTextField(ctaController, 'e.g., Claim Now'),
+                            _buildStyledTextField(
+                                ctaController, 'e.g., Claim Now'),
                           ],
                         ),
                       ),
@@ -472,7 +492,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildInputLabel('EXPIRY (OPTIONAL)'),
-                            _buildStyledTextField(expiresController, 'e.g., 2 days left'),
+                            _buildStyledTextField(
+                                expiresController, 'e.g., 2 days left'),
                           ],
                         ),
                       ),
@@ -483,26 +504,34 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: selectedType,
                     dropdownColor: const Color(0xFF0D1E36),
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: kNeonBlue),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: kNeonBlue),
                     decoration: _inputDecoration(''),
                     items: const [
-                      DropdownMenuItem(value: 'promo', child: Text('Promotion')),
-                      DropdownMenuItem(value: 'sale', child: Text('Flash Sale')),
-                      DropdownMenuItem(value: 'subscription', child: Text('Premium/VIP')),
-                      DropdownMenuItem(value: 'referral', child: Text('Referral Program')),
-                      DropdownMenuItem(value: 'event', child: Text('Tournament/Event')),
+                      DropdownMenuItem(
+                          value: 'promo', child: Text('Promotion')),
+                      DropdownMenuItem(
+                          value: 'sale', child: Text('Flash Sale')),
+                      DropdownMenuItem(
+                          value: 'subscription', child: Text('Premium/VIP')),
+                      DropdownMenuItem(
+                          value: 'referral', child: Text('Referral Program')),
+                      DropdownMenuItem(
+                          value: 'event', child: Text('Tournament/Event')),
                     ],
                     onChanged: (value) {
                       if (value != null) setState(() => selectedType = value);
                     },
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kNeonBlue,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                       elevation: 8,
                       shadowColor: kNeonBlue.withValues(alpha: 0.4),
                     ),
@@ -516,7 +545,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Please fill in the required fields.'),
+                            content:
+                                Text('Please fill in the required fields.'),
                             backgroundColor: Colors.redAccent,
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -529,15 +559,20 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                         'description': description,
                         'cta': cta,
                         'type': selectedType,
-                        'expires': expiresController.text.trim().isEmpty ? null : expiresController.text.trim(),
-                        'createdAt': FieldValue.serverTimestamp(), // Added for real-time sorting
+                        'expires': expiresController.text.trim().isEmpty
+                            ? null
+                            : expiresController.text.trim(),
+                        'createdAt': DateTime.now().toUtc().toIso8601String(),
                       });
 
                       Navigator.pop(context);
                     },
                     child: const Text(
                       'PUBLISH ADVERT',
-                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: 1),
+                      style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1),
                     ),
                   ),
                 ],
@@ -555,13 +590,18 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         label,
-        style: TextStyle(color: kNeonBlue.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+        style: TextStyle(
+            color: kNeonBlue.withValues(alpha: 0.7),
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2),
       ),
     );
   }
 
   // Helper for modern TextFields
-  Widget _buildStyledTextField(TextEditingController controller, String hint, {int maxLines = 1}) {
+  Widget _buildStyledTextField(TextEditingController controller, String hint,
+      {int maxLines = 1}) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
@@ -590,11 +630,7 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
 
   Future<void> _createAd(Map<String, dynamic> adData) async {
     try {
-      await _adsCollection.add({
-        ...adData,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      // FIX: Check mounted before showing SnackBar
+      await SupabaseService.client.from('advertisements').insert(adData);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -622,23 +658,35 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
 
   IconData _getAdTypeIcon(String type) {
     switch (type) {
-      case 'promo': return Icons.card_giftcard_rounded;
-      case 'subscription': return Icons.auto_awesome_rounded;
-      case 'sale': return Icons.local_offer_rounded;
-      case 'referral': return Icons.people_alt_rounded;
-      case 'event': return Icons.emoji_events_rounded;
-      default: return Icons.campaign_rounded;
+      case 'promo':
+        return Icons.card_giftcard_rounded;
+      case 'subscription':
+        return Icons.auto_awesome_rounded;
+      case 'sale':
+        return Icons.local_offer_rounded;
+      case 'referral':
+        return Icons.people_alt_rounded;
+      case 'event':
+        return Icons.emoji_events_rounded;
+      default:
+        return Icons.campaign_rounded;
     }
   }
 
   String _getAdTypeLabel(String type) {
     switch (type) {
-      case 'promo': return 'PROMOTION';
-      case 'subscription': return 'PREMIUM';
-      case 'sale': return 'FLASH SALE';
-      case 'referral': return 'REFERRAL';
-      case 'event': return 'EVENT';
-      default: return 'ADVERT';
+      case 'promo':
+        return 'PROMOTION';
+      case 'subscription':
+        return 'PREMIUM';
+      case 'sale':
+        return 'FLASH SALE';
+      case 'referral':
+        return 'REFERRAL';
+      case 'event':
+        return 'EVENT';
+      default:
+        return 'ADVERT';
     }
   }
 
@@ -705,13 +753,16 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
             const SizedBox(height: 8),
             Text(
               'Select a category to refine your feed',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
             ),
             const SizedBox(height: 24),
             _buildFilterOption('All Campaigns', true, Icons.grid_view_rounded),
-            _buildFilterOption('Promotions', false, Icons.card_giftcard_rounded),
+            _buildFilterOption(
+                'Promotions', false, Icons.card_giftcard_rounded),
             _buildFilterOption('Flash Sales', false, Icons.local_offer_rounded),
-            _buildFilterOption('Tournaments', false, Icons.emoji_events_rounded),
+            _buildFilterOption(
+                'Tournaments', false, Icons.emoji_events_rounded),
             _buildFilterOption('Referrals', false, Icons.people_alt_rounded),
             const SizedBox(height: 12),
           ],
@@ -731,15 +782,20 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isActive ? kNeonBlue.withValues(alpha: 0.1) : Colors.transparent,
+              color: isActive
+                  ? kNeonBlue.withValues(alpha: 0.1)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isActive ? kNeonBlue.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
+                color: isActive
+                    ? kNeonBlue.withValues(alpha: 0.3)
+                    : Colors.white.withValues(alpha: 0.05),
               ),
             ),
             child: Row(
               children: [
-                Icon(icon, color: isActive ? kNeonBlue : Colors.white38, size: 22),
+                Icon(icon,
+                    color: isActive ? kNeonBlue : Colors.white38, size: 22),
                 const SizedBox(width: 16),
                 Text(
                   label,
@@ -751,7 +807,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                 ),
                 const Spacer(),
                 if (isActive)
-                  const Icon(Icons.check_circle_rounded, color: kNeonBlue, size: 20),
+                  const Icon(Icons.check_circle_rounded,
+                      color: kNeonBlue, size: 20),
               ],
             ),
           ),
@@ -777,12 +834,14 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                 color: kNeonBlue.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.share_rounded, color: kNeonBlue, size: 22),
+              child:
+                  const Icon(Icons.share_rounded, color: kNeonBlue, size: 22),
             ),
             const SizedBox(width: 16),
             const Text(
               'Invite & Earn',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
             ),
           ],
         ),
@@ -792,7 +851,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
           children: [
             const Text(
               'Get your friends on NEX and receive 200 bonus tokens instantly when they join!',
-              style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+              style:
+                  TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
             ),
             const SizedBox(height: 24),
             Text(
@@ -831,7 +891,10 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'MAYBE LATER',
-              style: TextStyle(color: Colors.white38, fontWeight: FontWeight.bold, fontSize: 12),
+              style: TextStyle(
+                  color: Colors.white38,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12),
             ),
           ),
           const SizedBox(width: 8),
@@ -841,7 +904,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                 backgroundColor: kNeonBlue,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
               ),
               onPressed: () {
@@ -854,7 +918,8 @@ class _AdvertisementScreenState extends State<AdvertisementScreen> {
                   ),
                 );
               },
-              child: const Text('COPY LINK', style: TextStyle(fontWeight: FontWeight.w900)),
+              child: const Text('COPY LINK',
+                  style: TextStyle(fontWeight: FontWeight.w900)),
             ),
           ),
         ],

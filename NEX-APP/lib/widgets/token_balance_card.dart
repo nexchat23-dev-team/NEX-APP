@@ -21,7 +21,10 @@ class TokenBalanceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white12),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 10)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.28),
+              blurRadius: 18,
+              offset: const Offset(0, 10)),
         ],
       ),
       child: Row(
@@ -39,15 +42,21 @@ class TokenBalanceCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Your Balance', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                const Text('Your Balance',
+                    style: TextStyle(color: Colors.white70, fontSize: 14)),
                 const SizedBox(height: 8),
                 Text(
                   '${formatBalanceDisplay(balance)} TOKENS',
-                  style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  balance > 0 ? 'Ready for play, chat and rewards' : 'Insufficient tokens — recharge to continue',
+                  balance > 0
+                      ? 'Ready for play, chat and rewards'
+                      : 'Insufficient tokens — recharge to continue',
                   style: const TextStyle(color: Colors.white54, fontSize: 13),
                 ),
               ],

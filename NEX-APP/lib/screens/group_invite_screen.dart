@@ -7,7 +7,8 @@ class GroupInviteScreen extends StatefulWidget {
   final String conversationId;
   final String groupName;
 
-  const GroupInviteScreen({super.key, 
+  const GroupInviteScreen({
+    super.key,
     required this.conversationId,
     required this.groupName,
   });
@@ -41,7 +42,8 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: kSurfaceColor,
-        title: const Text('Regenerate Invite Link?', style: TextStyle(color: Colors.white)),
+        title: const Text('Regenerate Invite Link?',
+            style: TextStyle(color: Colors.white)),
         content: const Text(
           'Old invite links will no longer work. Are you sure?',
           style: TextStyle(color: Colors.white70),
@@ -64,7 +66,8 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
       try {
         await _chatService.regenerateGroupInviteCode(widget.conversationId);
         setState(() {
-          _inviteLinkFuture = _chatService.getGroupInviteLink(widget.conversationId);
+          _inviteLinkFuture =
+              _chatService.getGroupInviteLink(widget.conversationId);
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invite link regenerated!')),
@@ -84,7 +87,8 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
         backgroundColor: kDarkBackground,
         title: Text(
           '${widget.groupName} - Invite',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style:
+              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
@@ -107,7 +111,7 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
                   Icon(
                     Icons.error_outline,
                     size: 64,
-                    color: Colors.red.withOpacity(0.5),
+                    color: Colors.red.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -132,12 +136,16 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [kNeonPurple.withOpacity(0.15), kNeonDarkPurple.withOpacity(0.15)],
+                      colors: [
+                        kNeonPurple.withValues(alpha: 0.15),
+                        kNeonDarkPurple.withValues(alpha: 0.15)
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: kNeonPurple.withOpacity(0.3)),
+                    border:
+                        Border.all(color: kNeonPurple.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,7 +178,8 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF1A1A2E),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: kNeonPurple.withOpacity(0.3)),
+                    border:
+                        Border.all(color: kNeonPurple.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,11 +195,13 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
                       ),
                       const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: kNeonPurple.withOpacity(0.1),
+                          color: kNeonPurple.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: kNeonPurple.withOpacity(0.5)),
+                          border: Border.all(
+                              color: kNeonPurple.withValues(alpha: 0.5)),
                         ),
                         child: Row(
                           children: [
@@ -223,7 +234,8 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF1A1A2E),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: kNeonGreen.withOpacity(0.3)),
+                    border:
+                        Border.all(color: kNeonGreen.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,11 +251,13 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
                       ),
                       const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: kNeonGreen.withOpacity(0.1),
+                          color: kNeonGreen.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: kNeonGreen.withOpacity(0.5)),
+                          border: Border.all(
+                              color: kNeonGreen.withValues(alpha: 0.5)),
                         ),
                         child: Row(
                           children: [
@@ -274,14 +288,14 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [kNeonGreen, kNeonGreen.withOpacity(0.8)],
+                      colors: [kNeonGreen, kNeonGreen.withValues(alpha: 0.8)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: kNeonGreen.withOpacity(0.4),
+                        color: kNeonGreen.withValues(alpha: 0.4),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -326,16 +340,17 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    border:
+                        Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(
                         Icons.info_outline,
-                        color: Colors.blue.withOpacity(0.7),
+                        color: Colors.blue.withValues(alpha: 0.7),
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -343,7 +358,7 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
                         child: Text(
                           'Anyone with this invite link can join the group. Regenerate the link to invalidate previous invites.',
                           style: TextStyle(
-                            color: Colors.blue.withOpacity(0.7),
+                            color: Colors.blue.withValues(alpha: 0.7),
                             fontSize: 13,
                           ),
                         ),
@@ -359,4 +374,3 @@ class _GroupInviteScreenState extends State<GroupInviteScreen> {
     );
   }
 }
-

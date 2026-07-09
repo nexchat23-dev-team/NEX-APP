@@ -33,7 +33,8 @@ class PermissionsService {
     results['storage'] = await requestStoragePermission();
 
     // Background data usage is handled via Android manifest
-    results['backgroundData'] = true; // Always considered granted for UI purposes
+    results['backgroundData'] =
+        true; // Always considered granted for UI purposes
 
     return results;
   }

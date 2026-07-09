@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/constants.dart';
 import '../services/status_service.dart';
+import '../services/supabase_service.dart';
+import '../widgets/cyber_background.dart';
 
 class StatusViewerScreen extends StatefulWidget {
   final String statusId;
@@ -17,7 +18,8 @@ class StatusViewerScreen extends StatefulWidget {
   State<StatusViewerScreen> createState() => _StatusViewerScreenState();
 }
 
-class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTickerProviderStateMixin {
+class _StatusViewerScreenState extends State<StatusViewerScreen>
+    with SingleTickerProviderStateMixin {
   final StatusService _statusService = StatusService();
   final TextEditingController _reactionController = TextEditingController();
   bool _isReacting = false;
@@ -27,7 +29,8 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
+    _animController = AnimationController(
+        duration: const Duration(milliseconds: 800), vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         _cardVisible = true;
@@ -50,14 +53,18 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
     final userId = widget.statusData['userId'] as String?;
     final text = widget.statusData['text'] as String?;
     final mediaType = widget.statusData['mediaType'] as String? ?? 'text';
-    final createdAt = widget.statusData['createdAt'] as Timestamp?;
+    final createdAtString = widget.statusData['createdAt']?.toString();
     final views = widget.statusData['views'] as int? ?? 0;
+    final createdAt = createdAtString != null
+        ? DateTime.tryParse(createdAtString)
+        : null;
 
     return Scaffold(
       backgroundColor: kDarkBackground,
       appBar: AppBar(
         backgroundColor: kPrimaryBlue,
-        title: const Text('📱 Status Viewer', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Status Viewer',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         actions: [
           PopupMenuButton<String>(
@@ -110,17 +117,34 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
           ),
         ],
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [kDarkBackground, Color(0xFF0A1929)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: CyberBackground(
+              backgroundColors: [
+                Color(0xFF02030A),
+                Color(0xFF060813),
+                Color(0xFF0A1121),
+                Color(0xFF05070D),
+              ],
+              leftAuroraColors: [
+                Color(0xFFB23BFF),
+                Color(0xFF5E6BFF),
+                Color(0x00000000),
+              ],
+              rightAuroraColors: [
+                Color(0xFF00B8F4),
+                Color(0xFF5A50FF),
+                Color(0x00000000),
+              ],
+              fogColor: Color(0x2AFFFFFF),
+              leftAuroraCenter: Alignment(-0.24, -0.26),
+              rightAuroraCenter: Alignment(0.79, -0.17),
+            ),
           ),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-          child: Column(
+          SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Status Content Card
@@ -136,11 +160,15 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
                       gradient: LinearGradient(
-                        colors: [kNeonPurple.withValues(alpha: 0.15), kNeonBlue.withValues(alpha: 0.1)],
+                        colors: [
+                          kNeonPurple.withValues(alpha: 0.15),
+                          kNeonBlue.withValues(alpha: 0.1)
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      border: Border.all(color: kNeonPurple.withValues(alpha: 0.3), width: 2),
+                      border: Border.all(
+                          color: kNeonPurple.withValues(alpha: 0.3), width: 2),
                       boxShadow: [
                         BoxShadow(
                           color: kNeonPurple.withValues(alpha: 0.2),
@@ -157,7 +185,9 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                           future: _getUserInfo(userId),
                           builder: (context, snapshot) {
                             final userName = snapshot.data?['name'] ?? 'User';
-                            final avatarLabel = userName.isNotEmpty ? userName[0].toUpperCase() : 'U';
+                            final avatarLabel = userName.isNotEmpty
+                                ? userName[0].toUpperCase()
+                                : 'U';
 
                             return Row(
                               children: [
@@ -169,10 +199,12 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                                     gradient: const LinearGradient(
                                       colors: [kNeonPurple, kNeonDarkPurple],
                                     ),
-                                    border: Border.all(color: kNeonPurple, width: 3),
+                                    border: Border.all(
+                                        color: kNeonPurple, width: 3),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: kNeonPurple.withValues(alpha: 0.4),
+                                        color:
+                                            kNeonPurple.withValues(alpha: 0.4),
                                         blurRadius: 12,
                                       ),
                                     ],
@@ -180,46 +212,66 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                                   child: Center(
                                     child: Text(
                                       avatarLabel,
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         userName,
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 20),
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 20),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        createdAt != null ? _formatTime(createdAt.toDate()) : 'Just now',
-                                        style: const TextStyle(color: Colors.white54, fontSize: 14),
+                                        createdAt != null
+                                            ? _formatTime(createdAt)
+                                            : 'Just now',
+                                        style: const TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 14),
                                       ),
                                     ],
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: kNeonPurple.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: kNeonPurple.withValues(alpha: 0.5)),
+                                    border: Border.all(
+                                        color:
+                                            kNeonPurple.withValues(alpha: 0.5)),
                                   ),
                                   child: Row(
                                     children: [
                                       Icon(
-                                        mediaType == 'image' ? Icons.image :
-                                        mediaType == 'video' ? Icons.videocam : Icons.text_fields,
+                                        mediaType == 'image'
+                                            ? Icons.image
+                                            : mediaType == 'video'
+                                                ? Icons.videocam
+                                                : Icons.text_fields,
                                         size: 18,
                                         color: kNeonPurple,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         mediaType.toUpperCase(),
-                                        style: const TextStyle(color: kNeonPurple, fontSize: 12, fontWeight: FontWeight.w700),
+                                        style: const TextStyle(
+                                            color: kNeonPurple,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700),
                                       ),
                                     ],
                                   ),
@@ -240,7 +292,8 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                           ),
                           child: Text(
                             text ?? 'Status update',
-                            style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.6),
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 16, height: 1.6),
                           ),
                         ),
 
@@ -250,42 +303,56 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: kNeonBlue.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: kNeonBlue.withValues(alpha: 0.3)),
+                                border: Border.all(
+                                    color: kNeonBlue.withValues(alpha: 0.3)),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.visibility, size: 16, color: kNeonBlue),
+                                  const Icon(Icons.visibility,
+                                      size: 16, color: kNeonBlue),
                                   const SizedBox(width: 6),
                                   Text(
                                     '$views views',
-                                    style: const TextStyle(color: kNeonBlue, fontSize: 13, fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                        color: kNeonBlue,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600),
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(width: 12),
-                            StreamBuilder<QuerySnapshot>(
-                              stream: _statusService.getStatusReactions(widget.statusId),
+                            StreamBuilder<List<Map<String, dynamic>>>(
+                              stream: _statusService
+                                  .getStatusReactions(widget.statusId),
                               builder: (context, snapshot) {
-                                final reactions = snapshot.data?.docs ?? [];
+                                final reactions = snapshot.data ?? [];
                                 return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
                                     color: kNeonGreen.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: kNeonGreen.withValues(alpha: 0.3)),
+                                    border: Border.all(
+                                        color:
+                                            kNeonGreen.withValues(alpha: 0.3)),
                                   ),
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.favorite, size: 16, color: kNeonGreen),
+                                      const Icon(Icons.favorite,
+                                          size: 16, color: kNeonGreen),
                                       const SizedBox(width: 6),
                                       Text(
                                         '${reactions.length} reactions',
-                                        style: const TextStyle(color: kNeonGreen, fontSize: 13, fontWeight: FontWeight.w600),
+                                        style: const TextStyle(
+                                            color: kNeonGreen,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600),
                                       ),
                                     ],
                                   ),
@@ -304,7 +371,8 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
 
               // Reactions Section Header
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: kSurfaceColor.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(12),
@@ -312,26 +380,33 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.emoji_emotions, color: kNeonGreen, size: 20),
+                    const Icon(Icons.emoji_emotions,
+                        color: kNeonGreen, size: 20),
                     const SizedBox(width: 12),
                     const Text(
                       'Reactions',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700),
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: kNeonGreen.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: StreamBuilder<QuerySnapshot>(
-                        stream: _statusService.getStatusReactions(widget.statusId),
+                      child: StreamBuilder<List<Map<String, dynamic>>>(
+                        stream:
+                            _statusService.getStatusReactions(widget.statusId),
                         builder: (context, snapshot) {
-                          final count = snapshot.data?.docs.length ?? 0;
+                          final count = snapshot.data?.length ?? 0;
                           return Text(
                             '$count',
-                            style: const TextStyle(color: kNeonGreen, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                color: kNeonGreen, fontWeight: FontWeight.bold),
                           );
                         },
                       ),
@@ -342,14 +417,15 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
               const SizedBox(height: 16),
 
               // Reactions List
-              StreamBuilder<QuerySnapshot>(
+              StreamBuilder<List<Map<String, dynamic>>>(
                 stream: _statusService.getStatusReactions(widget.statusId),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator(color: kNeonPurple));
+                    return const Center(
+                        child: CircularProgressIndicator(color: kNeonPurple));
                   }
 
-                  final reactions = snapshot.data?.docs ?? [];
+                  final reactions = snapshot.data ?? [];
 
                   if (reactions.isEmpty) {
                     return Container(
@@ -361,16 +437,21 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                       ),
                       child: const Column(
                         children: [
-                          Icon(Icons.emoji_emotions_outlined, color: Colors.white30, size: 48),
+                          Icon(Icons.emoji_emotions_outlined,
+                              color: Colors.white30, size: 48),
                           SizedBox(height: 16),
                           Text(
                             'No reactions yet',
-                            style: TextStyle(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600),
                           ),
                           SizedBox(height: 8),
                           Text(
                             'Be the first to react to this status!',
-                            style: TextStyle(color: Colors.white30, fontSize: 14),
+                            style:
+                                TextStyle(color: Colors.white30, fontSize: 14),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -384,24 +465,30 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                     itemCount: reactions.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      final reactionDoc = reactions[index];
-                      final reactionData = reactionDoc.data() as Map<String, dynamic>;
+                      final reactionData = Map<String, dynamic>.from(reactions[index]);
                       final reactionUserId = reactionData['userId'] as String?;
                       final reactionText = reactionData['reaction'] as String?;
-                      final reactionCreatedAt = reactionData['createdAt'] as Timestamp?;
+                      final reactionCreatedAtString = reactionData['createdAt']?.toString();
+                      final reactionCreatedAt = reactionCreatedAtString != null
+                          ? DateTime.tryParse(reactionCreatedAtString)
+                          : null;
 
                       return FutureBuilder<Map<String, String>>(
                         future: _getUserInfo(reactionUserId),
                         builder: (context, userSnapshot) {
-                          final reactionUserName = userSnapshot.data?['name'] ?? 'User';
-                          final avatarLabel = reactionUserName.isNotEmpty ? reactionUserName[0].toUpperCase() : 'U';
+                          final reactionUserName =
+                              userSnapshot.data?['name'] ?? 'User';
+                          final avatarLabel = reactionUserName.isNotEmpty
+                              ? reactionUserName[0].toUpperCase()
+                              : 'U';
 
                           return Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: kSurfaceColor,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white12, width: 1),
+                              border:
+                                  Border.all(color: Colors.white12, width: 1),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.1),
@@ -418,44 +505,64 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     gradient: LinearGradient(
-                                      colors: [kNeonGreen.withValues(alpha: 0.6), kNeonGreen.withValues(alpha: 0.3)],
+                                      colors: [
+                                        kNeonGreen.withValues(alpha: 0.6),
+                                        kNeonGreen.withValues(alpha: 0.3)
+                                      ],
                                     ),
-                                    border: Border.all(color: kNeonGreen.withValues(alpha: 0.5), width: 2),
+                                    border: Border.all(
+                                        color:
+                                            kNeonGreen.withValues(alpha: 0.5),
+                                        width: 2),
                                   ),
                                   child: Center(
                                     child: Text(
                                       avatarLabel,
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         reactionUserName,
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 15),
                                       ),
                                       const SizedBox(height: 4),
                                       Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: kSurfaceColor.withValues(alpha: 0.5),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: kSurfaceColor.withValues(
+                                              alpha: 0.5),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                         child: Text(
                                           reactionText ?? '',
-                                          style: const TextStyle(color: Colors.white70, fontSize: 14),
+                                          style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                                 Text(
-                                  reactionCreatedAt != null ? _formatTime(reactionCreatedAt.toDate()) : '',
-                                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                  reactionCreatedAt != null
+                                      ? _formatTime(reactionCreatedAt)
+                                      : '',
+                                  style: const TextStyle(
+                                      color: Colors.white54, fontSize: 12),
                                 ),
                               ],
                             ),
@@ -469,8 +576,9 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
             ],
           ),
         ),
-      ),
-    );
+      ],
+    ),
+  );
   }
 
   void _showReactionDialog() {
@@ -483,7 +591,9 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
           children: [
             Icon(Icons.add_reaction, color: kNeonGreen),
             SizedBox(width: 12),
-            Text('Add Reaction', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Add Reaction',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
         content: TextField(
@@ -508,16 +618,23 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton.icon(
             onPressed: _addReaction,
-            icon: _isReacting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.send),
+            icon: _isReacting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.send),
             label: Text(_isReacting ? 'Adding...' : 'Add Reaction'),
             style: ElevatedButton.styleFrom(
               backgroundColor: kNeonGreen,
               foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
           ),
@@ -542,19 +659,21 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('✅ Reaction added successfully!'),
+          content: const Text('Reaction added successfully.'),
           backgroundColor: kNeonGreen,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('❌ Error: $e'),
+          content: Text('Error: $e'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     } finally {
@@ -566,7 +685,7 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
     // TODO: Implement share functionality
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('🔗 Share functionality coming soon!'),
+        content: Text('Share functionality coming soon.'),
         backgroundColor: kNeonBlue,
         behavior: SnackBarBehavior.floating,
       ),
@@ -577,7 +696,7 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
     // TODO: Implement report functionality
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('🚨 Report functionality coming soon!'),
+        content: Text('Report functionality coming soon.'),
         backgroundColor: Colors.orange,
         behavior: SnackBarBehavior.floating,
       ),
@@ -588,12 +707,15 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
     if (userId == null) return {'name': 'User'};
 
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
+      final user = await SupabaseService.client
+          .from('users')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+      if (user != null && user is Map<String, dynamic>) {
         return {
-          'name': data['username'] ?? data['name'] ?? 'User',
-          'email': data['email'] ?? '',
+          'name': user['username'] ?? user['name'] ?? 'User',
+          'email': user['email'] ?? '',
         };
       }
     } catch (e) {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/chat_service.dart';
 import '../utils/constants.dart';
 
@@ -7,7 +6,8 @@ class GroupSettingsScreen extends StatefulWidget {
   final String conversationId;
   final String groupName;
 
-  const GroupSettingsScreen({super.key, 
+  const GroupSettingsScreen({
+    super.key,
     required this.conversationId,
     required this.groupName,
   });
@@ -29,7 +29,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
 
   Future<void> _loadSettings() async {
     try {
-      final autoJoin = await _chatService.getAutoJoinSetting(widget.conversationId);
+      final autoJoin =
+          await _chatService.getAutoJoinSetting(widget.conversationId);
       setState(() {
         _autoJoinEnabled = autoJoin;
         _isLoading = false;
@@ -73,7 +74,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
         backgroundColor: kDarkBackground,
         title: Text(
           '${widget.groupName} - Settings',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style:
+              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         elevation: 0,
@@ -93,12 +95,15 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [kNeonPurple.withOpacity(0.15), kNeonDarkPurple.withOpacity(0.15)],
+                        colors: [
+                          kNeonPurple.withValues(alpha: 0.15),
+                          kNeonDarkPurple.withValues(alpha: 0.15)
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: kNeonPurple.withOpacity(0.3)),
+                      border: Border.all(color: kNeonPurple.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,7 +113,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: kNeonPurple.withOpacity(0.2),
+                                color: kNeonPurple.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(
@@ -167,8 +172,9 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  StreamBuilder<QuerySnapshot>(
-                    stream: _chatService.getPendingJoinRequests(widget.conversationId),
+                  StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: _chatService
+                        .getPendingJoinRequests(widget.conversationId),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(
@@ -185,28 +191,29 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                         );
                       }
 
-                      final requests = snapshot.data?.docs ?? [];
+                      final requests = snapshot.data ?? [];
 
                       if (requests.isEmpty) {
                         return Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
+                            color: Colors.white.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withOpacity(0.1)),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.1)),
                           ),
                           child: Column(
                             children: [
                               Icon(
                                 Icons.check_circle_outline,
                                 size: 48,
-                                color: kNeonGreen.withOpacity(0.5),
+                                color: kNeonGreen.withValues(alpha: 0.5),
                               ),
                               const SizedBox(height: 12),
                               Text(
                                 'No pending requests',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.5),
+                                  color: Colors.white.withValues(alpha: 0.5),
                                   fontSize: 14,
                                 ),
                               ),
@@ -217,9 +224,11 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
 
                       return Column(
                         children: List.generate(requests.length, (index) {
-                          final requestData = requests[index].data() as Map<String, dynamic>;
-                          final userId = requests[index].id;
-                          final userEmail = requestData['userEmail'] ?? 'Unknown User';
+                          final requestData = requests[index];
+                          final userId = requestData['user_id']?.toString() ??
+                              requestData['userId']?.toString() ?? '';
+                          final userEmail = requestData['user_email'] ??
+                              requestData['userEmail'] ?? 'Unknown User';
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -234,7 +243,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                                 end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white.withOpacity(0.1)),
+                              border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.1)),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,8 +258,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                                         shape: BoxShape.circle,
                                         gradient: LinearGradient(
                                           colors: [
-                                            kNeonPurple.withOpacity(0.6),
-                                            kNeonDarkPurple.withOpacity(0.6),
+                                            kNeonPurple.withValues(alpha: 0.6),
+                                            kNeonDarkPurple.withValues(alpha: 0.6),
                                           ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
@@ -271,7 +281,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             userEmail,
@@ -301,7 +312,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                                         onPressed: () =>
                                             _rejectRequest(userId, userEmail),
                                         style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Colors.red),
+                                          side: const BorderSide(
+                                              color: Colors.red),
                                           foregroundColor: Colors.red,
                                         ),
                                         child: const Text('Reject'),
@@ -360,4 +372,3 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     }
   }
 }
-

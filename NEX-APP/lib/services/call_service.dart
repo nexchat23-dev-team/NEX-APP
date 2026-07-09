@@ -1,201 +1,187 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_service.dart';
 
 class CallService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseClient _client = SupabaseService.client;
 
-  String? get currentUserId => _auth.currentUser?.uid;
+  String? get currentUserId => _client.auth.currentUser?.id;
 
-  // Initiate a call
   Future<String> initiateCall({
     required String receiverId,
     bool isVideo = false,
-    String? groupId, // For group calls
+    String? groupId,
   }) async {
     try {
-      if (currentUserId == null) throw Exception('User not authenticated');
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
 
-      final callRef = await _firestore.collection('calls').add({
+      final response = await _client.from('calls').insert({
         'callerId': currentUserId,
         'receiverId': receiverId,
         'groupId': groupId,
         'isVideo': isVideo,
-        'status': 'calling', // calling, connected, ended, missed, rejected
-        'startTime': FieldValue.serverTimestamp(),
-        'endTime': null,
-        'duration': 0,
-      });
+        'status': 'pending',
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
+        'endedAt': null,
+        'connectedAt': null,
+      }).select().single();
 
-      // Add to call history
-      await _firestore.collection('callHistory').add({
-        'callId': callRef.id,
+      if (response is! Map<String, dynamic>) {
+        throw Exception('Unable to create call');
+      }
+      final callId = response['id']?.toString();
+      if (callId == null) {
+        throw Exception('Unable to create call');
+      }
+
+      await _client.from('callHistory').insert({
+        'callId': callId,
         'callerId': currentUserId,
         'receiverId': receiverId,
+        'recipientId': receiverId,
         'groupId': groupId,
         'isVideo': isVideo,
-        'status': 'calling',
-        'timestamp': FieldValue.serverTimestamp(),
+        'status': 'pending',
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
       });
 
-      return callRef.id;
+      return callId;
     } catch (e) {
       debugPrint('Error initiating call: $e');
       rethrow;
     }
   }
 
-  // Accept a call
+  Future<void> updateCallStatus(String callId, String status) async {
+    try {
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final updates = <String, dynamic>{
+        'status': status,
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      if (status == 'active') {
+        updates['connectedAt'] = DateTime.now().toUtc().toIso8601String();
+      }
+
+      if (status == 'ended' || status == 'rejected') {
+        updates['endedAt'] = DateTime.now().toUtc().toIso8601String();
+      }
+
+      await _client.from('calls').update(updates).eq('id', callId);
+      await _client.from('callHistory').update({
+        'status': status,
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+      }).eq('callId', callId);
+    } catch (e) {
+      debugPrint('Error updating call status: $e');
+      rethrow;
+    }
+  }
+
   Future<void> acceptCall(String callId) async {
-    try {
-      if (currentUserId == null) throw Exception('User not authenticated');
-
-      final callRef = _firestore.collection('calls').doc(callId);
-      await callRef.update({
-        'status': 'connected',
-        'connectedAt': FieldValue.serverTimestamp(),
-      });
-
-      // Update call history
-      final historyQuery = await _firestore
-          .collection('callHistory')
-          .where('callId', isEqualTo: callId)
-          .get();
-
-      for (var doc in historyQuery.docs) {
-        await doc.reference.update({'status': 'connected'});
-      }
-    } catch (e) {
-      debugPrint('Error accepting call: $e');
-      rethrow;
-    }
+    await updateCallStatus(callId, 'active');
   }
 
-  // Reject a call
   Future<void> rejectCall(String callId) async {
-    try {
-      if (currentUserId == null) throw Exception('User not authenticated');
-
-      final callRef = _firestore.collection('calls').doc(callId);
-      await callRef.update({
-        'status': 'rejected',
-        'endTime': FieldValue.serverTimestamp(),
-      });
-
-      // Update call history
-      final historyQuery = await _firestore
-          .collection('callHistory')
-          .where('callId', isEqualTo: callId)
-          .get();
-
-      for (var doc in historyQuery.docs) {
-        await doc.reference.update({'status': 'rejected'});
-      }
-    } catch (e) {
-      debugPrint('Error rejecting call: $e');
-      rethrow;
-    }
+    await updateCallStatus(callId, 'rejected');
   }
 
-  // End a call
   Future<void> endCall(String callId) async {
     try {
-      if (currentUserId == null) throw Exception('User not authenticated');
-
-      final callRef = _firestore.collection('calls').doc(callId);
-      final callDoc = await callRef.get();
-
-      if (callDoc.exists) {
-        final callData = callDoc.data()!;
-        final connectedAt = callData['connectedAt'] as Timestamp?;
-        final duration = connectedAt != null
-            ? DateTime.now().difference(connectedAt.toDate()).inSeconds
-            : 0;
-
-        await callRef.update({
-          'status': 'ended',
-          'endTime': FieldValue.serverTimestamp(),
-          'duration': duration,
-        });
-
-        // Update call history
-        final historyQuery = await _firestore
-            .collection('callHistory')
-            .where('callId', isEqualTo: callId)
-            .get();
-
-        for (var doc in historyQuery.docs) {
-          await doc.reference.update({
-            'status': 'ended',
-            'duration': duration,
-          });
-        }
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
       }
+
+      final callData = await _client.from('calls').select().eq('id', callId).single();
+      if (callData == null) return;
+
+      final connectedAt = callData['connectedAt'];
+      final now = DateTime.now().toUtc();
+      int duration = 0;
+      if (connectedAt is String) {
+        duration = now.difference(DateTime.parse(connectedAt)).inSeconds;
+      }
+
+      await _client.from('calls').update({
+        'status': 'ended',
+        'endedAt': now.toIso8601String(),
+        'updatedAt': now.toIso8601String(),
+        'duration': duration,
+      }).eq('id', callId);
+
+      await _client.from('callHistory').update({
+        'status': 'ended',
+        'duration': duration,
+        'timestamp': now.toIso8601String(),
+      }).eq('callId', callId);
     } catch (e) {
       debugPrint('Error ending call: $e');
       rethrow;
     }
   }
 
-  // Get active calls for current user
-  Stream<QuerySnapshot> getActiveCalls() {
-    try {
-      if (currentUserId == null) throw Exception('User not authenticated');
-
-      return _firestore
-          .collection('calls')
-          .where('status', whereIn: ['calling', 'connected'])
-          .where(Filter.or(
-            Filter('callerId', isEqualTo: currentUserId),
-            Filter('receiverId', isEqualTo: currentUserId),
-          ))
-          .orderBy('startTime', descending: true)
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting active calls: $e');
-      });
-    } catch (e) {
-      debugPrint('Error setting up active calls stream: $e');
-      rethrow;
+  Stream<List<Map<String, dynamic>>> getActiveCalls() {
+    if (currentUserId == null) {
+      throw Exception('User not authenticated');
     }
+
+    return _client
+        .from('calls')
+        .stream(primaryKey: ['id'])
+        .inFilter('status', ['pending', 'active'])
+        .order('createdAt', ascending: false)
+        .map((rows) {
+          return rows.where((row) {
+            final callerId = row['callerId']?.toString();
+            final receiverId = row['receiverId']?.toString();
+            return callerId == currentUserId || receiverId == currentUserId;
+          }).toList();
+        })
+        .handleError((e) {
+          debugPrint('Error getting active calls: $e');
+        });
   }
 
-  // Get call history
-  Stream<QuerySnapshot> getCallHistory() {
-    try {
-      if (currentUserId == null) throw Exception('User not authenticated');
-
-      return _firestore
-          .collection('callHistory')
-          .where(Filter.or(
-            Filter('callerId', isEqualTo: currentUserId),
-            Filter('receiverId', isEqualTo: currentUserId),
-          ))
-          .orderBy('timestamp', descending: true)
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting call history: $e');
-      });
-    } catch (e) {
-      debugPrint('Error setting up call history stream: $e');
-      rethrow;
+  Stream<List<Map<String, dynamic>>> getCallHistory() {
+    if (currentUserId == null) {
+      throw Exception('User not authenticated');
     }
+
+    return _client
+        .from('callHistory')
+        .stream(primaryKey: ['id'])
+        .order('timestamp', ascending: false)
+        .map((rows) {
+          return rows.where((row) {
+            final callerId = row['callerId']?.toString();
+            final receiverId = row['receiverId']?.toString();
+            return callerId == currentUserId || receiverId == currentUserId;
+          }).toList();
+        })
+        .handleError((e) {
+          debugPrint('Error getting call history: $e');
+        });
   }
 
-  // WebRTC: Add ICE candidate
-  Future<void> addIceCandidate(String callId, Map<String, dynamic> candidate) async {
+  Future<void> addIceCandidate(
+      String callId, Map<String, dynamic> candidate) async {
     try {
-      if (currentUserId == null) throw Exception('User not authenticated');
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
 
-      await _firestore
-          .collection('calls')
-          .doc(callId)
-          .collection('iceCandidates')
-          .add({
+      await _client.from('iceCandidates').insert({
+        'callId': callId,
         'from': currentUserId,
         'candidate': candidate,
-        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (e) {
       debugPrint('Error adding ICE candidate: $e');
@@ -203,22 +189,18 @@ class CallService {
     }
   }
 
-  // WebRTC: Set SDP offer/answer
   Future<void> setSDP(String callId, String type, String sdp) async {
     try {
-      if (currentUserId == null) throw Exception('User not authenticated');
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
 
-      final sdpRef = _firestore
-          .collection('calls')
-          .doc(callId)
-          .collection('sdp')
-          .doc(type); // 'offer' or 'answer'
-
-      await sdpRef.set({
+      await _client.from('sdp').upsert({
+        'call_id': callId,
         'from': currentUserId,
         'type': type,
         'sdp': sdp,
-        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (e) {
       debugPrint('Error setting SDP: $e');
@@ -226,87 +208,79 @@ class CallService {
     }
   }
 
-  // WebRTC: Get ICE candidates
-  Stream<QuerySnapshot> getIceCandidates(String callId) {
-    try {
-      return _firestore
-          .collection('calls')
-          .doc(callId)
-          .collection('iceCandidates')
-          .orderBy('timestamp')
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting ICE candidates: $e');
-      });
-    } catch (e) {
-      debugPrint('Error setting up ICE candidates stream: $e');
-      rethrow;
-    }
+  Stream<List<Map<String, dynamic>>> getIceCandidates(String callId) {
+    return _client
+        .from('iceCandidates')
+        .stream(primaryKey: ['id'])
+        .eq('callId', callId)
+        .order('timestamp', ascending: true)
+        .handleError((e) {
+          debugPrint('Error getting ICE candidates: $e');
+        });
   }
 
-  // WebRTC: Get SDP
-  Stream<QuerySnapshot> getSDP(String callId) {
-    try {
-      return _firestore
-          .collection('calls')
-          .doc(callId)
-          .collection('sdp')
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting SDP: $e');
-      });
-    } catch (e) {
-      debugPrint('Error setting up SDP stream: $e');
-      rethrow;
-    }
+  Stream<List<Map<String, dynamic>>> getSDP(String callId) {
+    return _client
+        .from('sdp')
+        .stream(primaryKey: ['id'])
+        .eq('call_id', callId)
+        .handleError((e) {
+          debugPrint('Error getting SDP: $e');
+        });
   }
 
-  // Initiate group call
   Future<String> initiateGroupCall({
     required String groupId,
     bool isVideo = false,
   }) async {
     try {
-      if (currentUserId == null) throw Exception('User not authenticated');
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
 
-      final groupCallRef = await _firestore.collection('groupCalls').add({
+      final response = await _client.from('groupCalls').insert({
         'groupId': groupId,
         'initiatorId': currentUserId,
         'isVideo': isVideo,
-        'status': 'calling', // calling, connected, ended
+        'status': 'pending',
         'participants': [currentUserId],
-        'startTime': FieldValue.serverTimestamp(),
-        'endTime': null,
-      });
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
+      }).select().single();
 
-      return groupCallRef.id;
+      if (response is! Map<String, dynamic>) {
+        throw Exception('Unable to create group call');
+      }
+      final groupCallId = response['id']?.toString();
+      if (groupCallId == null) {
+        throw Exception('Unable to create group call');
+      }
+      return groupCallId;
     } catch (e) {
       debugPrint('Error initiating group call: $e');
       rethrow;
     }
   }
 
-  // Join group call
   Future<void> joinGroupCall(String groupCallId) async {
     try {
-      if (currentUserId == null) throw Exception('User not authenticated');
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
 
-      final groupCallRef = _firestore.collection('groupCalls').doc(groupCallId);
-      final groupCallDoc = await groupCallRef.get();
+      final groupCallData = await _client.from('groupCalls').select().eq('id', groupCallId).single();
+      if (groupCallData == null) {
+        throw Exception('Group call not found');
+      }
 
-      if (!groupCallDoc.exists) throw Exception('Group call not found');
-
-      final groupCallData = groupCallDoc.data()!;
       final participants = List<String>.from(groupCallData['participants'] ?? []);
-
       if (!participants.contains(currentUserId)) {
         participants.add(currentUserId!);
-        await groupCallRef.update({'participants': participants});
-
-        // Add participant record
-        await groupCallRef.collection('participants').add({
-          'userId': currentUserId,
-          'joinedAt': FieldValue.serverTimestamp(),
+        await _client.from('groupCalls').update({'participants': participants}).eq('id', groupCallId);
+        await _client.from('groupCallParticipants').insert({
+          'group_call_id': groupCallId,
+          'userId': currentUserId!,
+          'joinedAt': DateTime.now().toUtc().toIso8601String(),
           'status': 'connected',
         });
       }
@@ -316,74 +290,57 @@ class CallService {
     }
   }
 
-  // Leave group call
   Future<void> leaveGroupCall(String groupCallId) async {
     try {
-      if (currentUserId == null) throw Exception('User not authenticated');
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
 
-      final groupCallRef = _firestore.collection('groupCalls').doc(groupCallId);
-      final groupCallDoc = await groupCallRef.get();
+      final groupCallData = await _client.from('groupCalls').select().eq('id', groupCallId).single();
+      if (groupCallData == null) {
+        return;
+      }
 
-      if (groupCallDoc.exists) {
-        final groupCallData = groupCallDoc.data()!;
-        final participants = List<String>.from(groupCallData['participants'] ?? []);
-        final initiatorId = groupCallData['initiatorId'];
+      final participants = List<String>.from(groupCallData['participants'] ?? []);
+      final initiatorId = groupCallData['initiatorId'];
 
-        participants.remove(currentUserId);
+      participants.remove(currentUserId);
 
-        if (participants.isEmpty) {
-          // End call if no participants left
-          await groupCallRef.update({
-            'status': 'ended',
-            'endTime': FieldValue.serverTimestamp(),
-            'participants': participants,
-          });
-        } else {
-          await groupCallRef.update({'participants': participants});
-
-          // If initiator leaves, assign to another participant
-          if (currentUserId == initiatorId && participants.isNotEmpty) {
-            await groupCallRef.update({'initiatorId': participants.first});
-          }
-        }
-
-        // Update participant status
-        final participantQuery = await groupCallRef
-            .collection('participants')
-            .where('userId', isEqualTo: currentUserId)
-            .get();
-
-        for (var doc in participantQuery.docs) {
-          await doc.reference.update({
-            'leftAt': FieldValue.serverTimestamp(),
-            'status': 'disconnected',
-          });
+      if (participants.isEmpty) {
+        await _client.from('groupCalls').update({
+          'status': 'ended',
+          'endTime': DateTime.now().toUtc().toIso8601String(),
+          'participants': participants,
+        }).eq('id', groupCallId);
+      } else {
+        await _client.from('groupCalls').update({'participants': participants}).eq('id', groupCallId);
+        if (currentUserId == initiatorId && participants.isNotEmpty) {
+          await _client.from('groupCalls').update({'initiatorId': participants.first}).eq('id', groupCallId);
         }
       }
+
+      await _client.from('groupCallParticipants').update({
+        'leftAt': DateTime.now().toUtc().toIso8601String(),
+        'status': 'disconnected',
+      }).eq('group_call_id', groupCallId).eq('userId', currentUserId!);
     } catch (e) {
       debugPrint('Error leaving group call: $e');
       rethrow;
     }
   }
 
-  // Get active group calls for user's groups
-  Stream<QuerySnapshot> getActiveGroupCalls() {
-    try {
-      if (currentUserId == null) throw Exception('User not authenticated');
-
-      // This would need to be filtered by groups the user is member of
-      // For now, return all active group calls
-      return _firestore
-          .collection('groupCalls')
-          .where('status', whereIn: ['calling', 'connected'])
-          .orderBy('startTime', descending: true)
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting active group calls: $e');
-      });
-    } catch (e) {
-      debugPrint('Error setting up active group calls stream: $e');
-      rethrow;
+  Stream<List<Map<String, dynamic>>> getActiveGroupCalls() {
+    if (currentUserId == null) {
+      throw Exception('User not authenticated');
     }
+
+    return _client
+        .from('groupCalls')
+        .stream(primaryKey: ['id'])
+        .inFilter('status', ['pending', 'active'])
+        .order('createdAt', ascending: false)
+        .handleError((e) {
+          debugPrint('Error getting active group calls: $e');
+        });
   }
 }

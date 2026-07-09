@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/constants.dart';
 
 class ThemeProvider extends ChangeNotifier {
-  bool _isDarkMode = true;
+  /// themeModePref: 'system' | 'light' | 'dark'
+  String _themeModePref = 'system';
   late SharedPreferences _prefs;
 
-  bool get isDarkMode => _isDarkMode;
+  String get themeModePref => _themeModePref;
 
   ThemeProvider() {
     _initPreferences();
@@ -13,29 +15,27 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> _initPreferences() async {
     _prefs = await SharedPreferences.getInstance();
-    _isDarkMode = _prefs.getBool('isDarkMode') ?? true;
+    _themeModePref = _prefs.getString('themeMode') ?? 'system';
     notifyListeners();
   }
+
+  Future<void> setThemeModePref(String value) async {
+    _themeModePref = value;
+    await _prefs.setString('themeMode', value);
+    notifyListeners();
+  }
+
+  bool get isDarkMode => _themeModePref == 'dark';
 
   Future<void> toggleTheme() async {
-    _isDarkMode = !_isDarkMode;
-    await _prefs.setBool('isDarkMode', _isDarkMode);
-    notifyListeners();
+    if (_themeModePref == 'dark') {
+      await setThemeModePref('light');
+    } else {
+      await setThemeModePref('dark');
+    }
   }
 
-  ThemeData getThemeData() {
-    return _isDarkMode ? _buildDarkTheme() : _buildLightTheme();
-  }
-
-  ThemeData _buildDarkTheme() {
-    const kNeonGreen = Color(0xFF25D366);
-    const kNeonBlue = Color(0xFF00B8F4);
-    const kNeonPurple = Color(0xFF9D4EDD);
-    const kPrimaryGreen = Color(0xFF075E54);
-    const kPrimaryBlue = Color(0xFF054A85);
-    const kDarkBackground = Color(0xFF0B1410);
-    const kSurfaceColor = Color(0xFF0F1E1B);
-
+  ThemeData getDarkThemeData() {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
@@ -46,7 +46,7 @@ class ThemeProvider extends ChangeNotifier {
       fontFamily: 'Roboto',
       colorScheme: const ColorScheme.dark(
         primary: kNeonGreen,
-        secondary: kNeonBlue,
+        secondary: kNeonPurple,
         tertiary: kNeonPurple,
         surface: kSurfaceColor,
         onSurface: Colors.white,
@@ -58,22 +58,68 @@ class ThemeProvider extends ChangeNotifier {
         elevation: 0,
         centerTitle: false,
         iconTheme: IconThemeData(color: Colors.white),
-        titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+        titleTextStyle: TextStyle(
+            color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: kDarkBackground,
+        selectedItemColor: kNeonPurple,
+        unselectedItemColor: Colors.white70,
+        showUnselectedLabels: true,
+        elevation: 0,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: kNeonPurple,
+        foregroundColor: Colors.white,
+      ),
+      progressIndicatorTheme:
+          const ProgressIndicatorThemeData(color: kNeonPurple),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: kNeonPurple,
+        unselectedLabelColor: Colors.white70,
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(color: kNeonPurple, width: 2),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: kNeonPurple),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: kNeonPurple,
+        thumbColor: kNeonPurple,
+        overlayColor: kNeonPurple.withValues(alpha: 0.2),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.all(kNeonPurple),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? kNeonPurple.withValues(alpha: 0.6)
+              : Colors.white24,
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.all(kNeonPurple),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.all(kNeonPurple),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: kNeonGreen,
           foregroundColor: Colors.black,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 0,
+          shadowColor: kNeonPurple.withValues(alpha: 0.32),
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.white70,
-          side: const BorderSide(color: kNeonBlue),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          side: const BorderSide(color: kNeonPurple),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
@@ -84,35 +130,40 @@ class ThemeProvider extends ChangeNotifier {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         labelStyle: const TextStyle(color: Colors.white70),
         hintStyle: const TextStyle(color: Colors.white54),
       ),
+      snackBarTheme: const SnackBarThemeData(
+        backgroundColor: kNeonPurple,
+        contentTextStyle: TextStyle(color: Colors.white),
+      ),
+      dividerColor: kNeonPurple.withValues(alpha: 0.28),
+      listTileTheme: const ListTileThemeData(
+        iconColor: kNeonPurple,
+        textColor: Colors.white,
+        selectedColor: kNeonPurple,
+      ),
+      splashColor: kNeonPurple.withValues(alpha: 0.1),
+      highlightColor: kNeonPurple.withValues(alpha: 0.1),
     );
   }
 
-  ThemeData _buildLightTheme() {
-    const kNeonGreen = Color(0xFF25D366);
-    const kNeonBlue = Color(0xFF00B8F4);
-    const kNeonPurple = Color(0xFF9D4EDD);
-    const kPrimaryGreen = Color(0xFF075E54);
-    const kPrimaryBlue = Color(0xFF054A85);
-    const kLightBackground = Color(0xFFF5F5F5);
-    const kLightSurface = Color(0xFFFFFFFF);
-
+  ThemeData getLightThemeData() {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       primaryColor: kPrimaryGreen,
-      scaffoldBackgroundColor: kLightBackground,
-      canvasColor: kLightBackground,
-      cardColor: kLightSurface,
+      scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+      canvasColor: const Color(0xFFF5F5F5),
+      cardColor: Colors.white,
       fontFamily: 'Roboto',
       colorScheme: const ColorScheme.light(
         primary: kNeonGreen,
-        secondary: kNeonBlue,
+        secondary: kNeonPurple,
         tertiary: kNeonPurple,
-        surface: kLightSurface,
+        surface: Colors.white,
         onSurface: Colors.black87,
         onPrimary: Colors.white,
         onSecondary: Colors.black87,
@@ -122,22 +173,68 @@ class ThemeProvider extends ChangeNotifier {
         elevation: 0,
         centerTitle: false,
         iconTheme: IconThemeData(color: Colors.white),
-        titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+        titleTextStyle: TextStyle(
+            color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Color(0xFFF5F5F5),
+        selectedItemColor: kNeonPurple,
+        unselectedItemColor: Colors.black54,
+        showUnselectedLabels: true,
+        elevation: 0,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: kNeonPurple,
+        foregroundColor: Colors.white,
+      ),
+      progressIndicatorTheme:
+          const ProgressIndicatorThemeData(color: kNeonPurple),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: kNeonPurple,
+        unselectedLabelColor: Colors.black54,
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(color: kNeonPurple, width: 2),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: kNeonPurple),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: kNeonPurple,
+        thumbColor: kNeonPurple,
+        overlayColor: kNeonPurple.withValues(alpha: 0.2),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.all(kNeonPurple),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? kNeonPurple.withValues(alpha: 0.6)
+              : Colors.black26,
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.all(kNeonPurple),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.all(kNeonPurple),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: kNeonGreen,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 0,
+          shadowColor: kNeonPurple.withValues(alpha: 0.2),
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.black87,
-          side: const BorderSide(color: kNeonBlue),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          side: const BorderSide(color: kNeonPurple),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
@@ -148,10 +245,23 @@ class ThemeProvider extends ChangeNotifier {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: Colors.grey[300]!),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         labelStyle: const TextStyle(color: Colors.black87),
         hintStyle: const TextStyle(color: Colors.black54),
       ),
+      snackBarTheme: const SnackBarThemeData(
+        backgroundColor: kNeonPurple,
+        contentTextStyle: TextStyle(color: Colors.white),
+      ),
+      dividerColor: kNeonPurple.withValues(alpha: 0.25),
+      listTileTheme: const ListTileThemeData(
+        iconColor: kNeonPurple,
+        textColor: Colors.black87,
+        selectedColor: kNeonPurple,
+      ),
+      splashColor: kNeonPurple.withValues(alpha: 0.1),
+      highlightColor: kNeonPurple.withValues(alpha: 0.1),
     );
   }
 }

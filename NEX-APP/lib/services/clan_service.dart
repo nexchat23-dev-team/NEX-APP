@@ -1,14 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_service.dart';
 
 class ClanService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseClient _client = SupabaseService.client;
 
-  String? get currentUserId => _auth.currentUser?.uid;
+  String? get currentUserId => _client.auth.currentUser?.id;
 
-  // Create a new clan
   Future<String> createClan({
     required String name,
     required String description,
@@ -18,7 +16,7 @@ class ClanService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final clanRef = await _firestore.collection('clans').add({
+      final response = await _client.from('clans').insert({
         'name': name,
         'description': description,
         'motto': motto,
@@ -28,27 +26,29 @@ class ClanService {
         'members': [currentUserId],
         'level': 1,
         'experience': 0,
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
         'isActive': true,
-      });
+      }).select().single();
 
-      return clanRef.id;
+      if (response is Map<String, dynamic>) {
+        return response['id']?.toString() ?? '';
+      }
+      throw Exception('Unable to create clan');
     } catch (e) {
       debugPrint('Error creating clan: $e');
       rethrow;
     }
   }
 
-  // Join clan request
   Future<void> requestJoinClan(String clanId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      await _firestore.collection('clanJoinRequests').add({
+      await _client.from('clanJoinRequests').insert({
         'clanId': clanId,
         'userId': currentUserId,
-        'status': 'pending', // pending, approved, rejected
-        'requestedAt': FieldValue.serverTimestamp(),
+        'status': 'pending',
+        'requestedAt': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (e) {
       debugPrint('Error requesting to join clan: $e');
@@ -56,125 +56,142 @@ class ClanService {
     }
   }
 
-  // Approve join request (admin only)
   Future<void> approveJoinRequest(String requestId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final requestDoc = await _firestore.collection('clanJoinRequests').doc(requestId).get();
-      if (!requestDoc.exists) throw Exception('Request not found');
+      final request = await _client
+          .from('clanJoinRequests')
+          .select()
+          .eq('id', requestId)
+          .maybeSingle();
 
-      final requestData = requestDoc.data()!;
-      final clanId = requestData['clanId'];
-      final userId = requestData['userId'];
-
-      // Add user to clan members
-      final clanRef = _firestore.collection('clans').doc(clanId);
-      final clanDoc = await clanRef.get();
-      if (!clanDoc.exists) throw Exception('Clan not found');
-
-      final clanData = clanDoc.data()!;
-      final members = List<String>.from(clanData['members'] ?? []);
-      if (!members.contains(userId)) {
-        members.add(userId);
-        await clanRef.update({'members': members});
+      if (request == null || request is! Map<String, dynamic>) {
+        throw Exception('Request not found');
       }
 
-      // Update request status
-      await _firestore.collection('clanJoinRequests').doc(requestId).update({
+      final clanId = request['clanId']?.toString();
+      final userId = request['userId']?.toString();
+      if (clanId == null || userId == null) {
+        throw Exception('Invalid request data');
+      }
+
+      final clan = await _client
+          .from('clans')
+          .select()
+          .eq('id', clanId)
+          .maybeSingle();
+      if (clan == null || clan is! Map<String, dynamic>) {
+        throw Exception('Clan not found');
+      }
+
+      final members = List<String>.from(clan['members'] ?? []);
+      if (!members.contains(userId)) {
+        members.add(userId);
+        await _client.from('clans').update({'members': members}).eq('id', clanId);
+      }
+
+      await _client.from('clanJoinRequests').update({
         'status': 'approved',
-        'approvedAt': FieldValue.serverTimestamp(),
+        'approvedAt': DateTime.now().toUtc().toIso8601String(),
         'approvedBy': currentUserId,
-      });
+      }).eq('id', requestId);
     } catch (e) {
       debugPrint('Error approving join request: $e');
       rethrow;
     }
   }
 
-  // Leave clan
   Future<void> leaveClan(String clanId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final clanRef = _firestore.collection('clans').doc(clanId);
-      final clanDoc = await clanRef.get();
+      final clan = await _client
+          .from('clans')
+          .select()
+          .eq('id', clanId)
+          .maybeSingle();
 
-      if (!clanDoc.exists) throw Exception('Clan not found');
+      if (clan == null || clan is! Map<String, dynamic>) {
+        throw Exception('Clan not found');
+      }
 
-      final clanData = clanDoc.data()!;
-      final members = List<String>.from(clanData['members'] ?? []);
-      final admins = List<String>.from(clanData['admins'] ?? []);
-      final founderId = clanData['founderId'];
+      final members = List<String>.from(clan['members'] ?? []);
+      final admins = List<String>.from(clan['admins'] ?? []);
+      final founderId = clan['founderId']?.toString();
 
       if (!members.contains(currentUserId)) throw Exception('Not a member');
 
-      // Remove from members and admins
       members.remove(currentUserId);
       admins.remove(currentUserId);
 
       if (members.isEmpty) {
-        // Disband clan if no members left
-        await clanRef.delete();
-      } else {
-        // If founder is leaving, assign new founder
-        String newFounderId = founderId;
-        if (currentUserId == founderId) {
-          newFounderId = members.first;
-          if (!admins.contains(newFounderId)) {
-            admins.add(newFounderId);
-          }
-        }
-
-        await clanRef.update({
-          'members': members,
-          'admins': admins,
-          'founderId': newFounderId,
-        });
+        await _client.from('clans').delete().eq('id', clanId);
+        return;
       }
+
+      String newFounderId = founderId ?? members.first;
+      if (currentUserId == founderId) {
+        newFounderId = members.first;
+        if (!admins.contains(newFounderId)) {
+          admins.add(newFounderId);
+        }
+      }
+
+      await _client.from('clans').update({
+        'members': members,
+        'admins': admins,
+        'founderId': newFounderId,
+      }).eq('id', clanId);
     } catch (e) {
       debugPrint('Error leaving clan: $e');
       rethrow;
     }
   }
 
-  // Get clans stream
-  Stream<QuerySnapshot> getClans() {
+  Stream<List<Map<String, dynamic>>> getClans() {
     try {
-      return _firestore
-          .collection('clans')
-          .where('isActive', isEqualTo: true)
-          .orderBy('createdAt', descending: true)
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting clans: $e');
-      });
+      return Stream<List<Map<String, dynamic>>>.fromFuture(() async {
+        final response = await _client
+            .from('clans')
+            .select()
+            .eq('isActive', true)
+            .order('createdAt', ascending: false);
+
+        if (response is! List) return <Map<String, dynamic>>[];
+        return (response as List<dynamic>)
+            .map((row) => Map<String, dynamic>.from(row as Map<String, dynamic>))
+            .toList();
+      }()).handleError((e) {debugPrint('Error getting clans: $e');});
     } catch (e) {
       debugPrint('Error setting up clans stream: $e');
       rethrow;
     }
   }
 
-  // Get user's clans
-  Stream<QuerySnapshot> getUserClans() {
+  Stream<List<Map<String, dynamic>>> getUserClans() {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      return _firestore
-          .collection('clans')
-          .where('members', arrayContains: currentUserId)
-          .where('isActive', isEqualTo: true)
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting user clans: $e');
-      });
+      return Stream<List<Map<String, dynamic>>>.fromFuture(() async {
+        final response = await _client
+            .from('clans')
+            .select()
+            .contains('members', [currentUserId!])
+            .eq('isActive', true)
+            .order('createdAt', ascending: false);
+
+        if (response is! List) return <Map<String, dynamic>>[];
+        return (response as List<dynamic>)
+            .map((row) => Map<String, dynamic>.from(row as Map<String, dynamic>))
+            .toList();
+      }()).handleError((e) {debugPrint('Error getting user clans: $e');});
     } catch (e) {
       debugPrint('Error setting up user clans stream: $e');
       rethrow;
     }
   }
 
-  // Send message in clan
   Future<void> sendClanMessage({
     required String clanId,
     required String text,
@@ -183,15 +200,12 @@ class ClanService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      await _firestore
-          .collection('clans')
-          .doc(clanId)
-          .collection('messages')
-          .add({
+      await _client.from('clanMessages').insert({
+        'clanId': clanId,
         'senderId': currentUserId,
         'text': text,
         'type': type,
-        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (e) {
       debugPrint('Error sending clan message: $e');
@@ -199,25 +213,25 @@ class ClanService {
     }
   }
 
-  // Get clan messages
-  Stream<QuerySnapshot> getClanMessages(String clanId) {
+  Stream<List<Map<String, dynamic>>> getClanMessages(String clanId) {
     try {
-      return _firestore
-          .collection('clans')
-          .doc(clanId)
-          .collection('messages')
-          .orderBy('timestamp', descending: true)
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting clan messages: $e');
-      });
+      return _client
+          .from('clanMessages')
+          .stream(primaryKey: ['id'])
+          .eq('clanId', clanId)
+          .order('timestamp', ascending: false)
+          .map((rows) {
+            return rows
+                .map((row) => Map<String, dynamic>.from(row))
+                .toList();
+          })
+          .handleError((e) {debugPrint('Error getting clan messages: $e');});
     } catch (e) {
       debugPrint('Error setting up clan messages stream: $e');
       rethrow;
     }
   }
 
-  // Create clan event
   Future<String> createClanEvent({
     required String clanId,
     required String title,
@@ -228,58 +242,62 @@ class ClanService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final eventRef = await _firestore
-          .collection('clans')
-          .doc(clanId)
-          .collection('events')
-          .add({
+      final response = await _client.from('clanEvents').insert({
+        'clanId': clanId,
         'title': title,
         'description': description,
-        'eventDate': eventDate,
+        'eventDate': eventDate.toUtc().toIso8601String(),
         'location': location,
         'createdBy': currentUserId,
         'attendees': [currentUserId],
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+      }).select().single();
 
-      return eventRef.id;
+      if (response is Map<String, dynamic>) {
+        return response['id']?.toString() ?? '';
+      }
+      throw Exception('Unable to create clan event');
     } catch (e) {
       debugPrint('Error creating clan event: $e');
       rethrow;
     }
   }
 
-  // Get clan events
-  Stream<QuerySnapshot> getClanEvents(String clanId) {
+  Stream<List<Map<String, dynamic>>> getClanEvents(String clanId) {
     try {
-      return _firestore
-          .collection('clans')
-          .doc(clanId)
-          .collection('events')
-          .orderBy('eventDate')
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting clan events: $e');
-      });
+      return _client
+          .from('clanEvents')
+          .stream(primaryKey: ['id'])
+          .eq('clanId', clanId)
+          .order('eventDate', ascending: true)
+          .map((rows) {
+            return rows
+                .map((row) => Map<String, dynamic>.from(row))
+                .toList();
+          })
+          .handleError((e) {debugPrint('Error getting clan events: $e');});
     } catch (e) {
       debugPrint('Error setting up clan events stream: $e');
       rethrow;
     }
   }
 
-  // Get join requests for clan (admin only)
-  Stream<QuerySnapshot> getClanJoinRequests(String clanId) {
+  Stream<List<Map<String, dynamic>>> getClanJoinRequests(String clanId) {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      return _firestore
-          .collection('clanJoinRequests')
-          .where('clanId', isEqualTo: clanId)
-          .where('status', isEqualTo: 'pending')
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting clan join requests: $e');
-      });
+      return Stream<List<Map<String, dynamic>>>.fromFuture(() async {
+        final response = await _client
+            .from('clanJoinRequests')
+            .select()
+            .eq('clanId', clanId)
+            .eq('status', 'pending');
+
+        if (response is! List) return <Map<String, dynamic>>[];
+        return (response as List<dynamic>)
+            .map((row) => Map<String, dynamic>.from(row as Map<String, dynamic>))
+            .toList();
+      }()).handleError((e) {debugPrint('Error getting clan join requests: $e');});
     } catch (e) {
       debugPrint('Error setting up clan join requests stream: $e');
       rethrow;

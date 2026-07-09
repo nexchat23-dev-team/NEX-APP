@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/constants.dart';
 import '../services/status_service.dart';
+import '../widgets/cyber_background.dart';
 import 'status_viewer_screen.dart';
 
 class MyStatusesScreen extends StatefulWidget {
@@ -40,9 +40,34 @@ class _MyStatusesScreenState extends State<MyStatusesScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _statusService.getMyStatuses(),
-        builder: (context, snapshot) {
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: CyberBackground(
+              backgroundColors: [
+                Color(0xFF02030A),
+                Color(0xFF06040E),
+                Color(0xFF0C0F1A),
+                Color(0xFF03040B),
+              ],
+              leftAuroraColors: [
+                Color(0xFFB23BFF),
+                Color(0xFF4A2E9A),
+                Color(0x00000000),
+              ],
+              rightAuroraColors: [
+                Color(0xFF00D4FF),
+                Color(0xFF1A2D5A),
+                Color(0x00000000),
+              ],
+              fogColor: Color(0x24FFFFFF),
+              leftAuroraCenter: Alignment(-0.23, -0.25),
+              rightAuroraCenter: Alignment(0.8, -0.15),
+            ),
+          ),
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _statusService.getMyStatuses(),
+            builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
                 child: CircularProgressIndicator(
@@ -57,23 +82,22 @@ class _MyStatusesScreenState extends State<MyStatusesScreen> {
             );
           }
 
-          final statuses = snapshot.data?.docs ?? [];
+          final statuses = snapshot.data ?? [];
           if (statuses.isEmpty) return _buildEmptyState();
 
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             itemCount: statuses.length,
             itemBuilder: (context, index) {
-              final statusDoc = statuses[index];
-              final statusData = statusDoc.data() as Map<String, dynamic>;
-              final statusId = statusDoc.id;
+              final statusData = statuses[index];
+              final statusId = statusData['id']?.toString() ?? '';
               final text = statusData['text'] as String?;
               final mediaType =
                   (statusData['mediaType'] as String? ?? 'text').toUpperCase();
-              final createdAt = statusData['createdAt'] as Timestamp?;
+              final createdAtString = statusData['createdAt']?.toString();
               final views = statusData['views'] as int? ?? 0;
-              final timeText = createdAt != null
-                  ? _formatTime(createdAt.toDate())
+              final timeText = createdAtString != null
+                  ? _formatTime(DateTime.parse(createdAtString))
                   : 'INITIALIZING...';
 
               return Dismissible(
@@ -181,7 +205,9 @@ class _MyStatusesScreenState extends State<MyStatusesScreen> {
               );
             },
           );
-        },
+            },
+          ),
+        ],
       ),
     );
   }
@@ -241,42 +267,17 @@ class _MyStatusesScreenState extends State<MyStatusesScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: kNeonPurple.withValues(alpha: 0.1)),
               ),
-              child: Icon(Icons.satellite_alt_rounded,
-                  size: 40, color: kNeonPurple.withValues(alpha: 0.3)),
+              child: Icon(Icons.satellite_alt_rounded, size: 40, color: kNeonPurple.withValues(alpha: 0.3)),
             ),
             const SizedBox(height: 32),
-            const Text(
-              'NO_BROADCAST_HISTORY',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2),
-            ),
+            const Text('No status yet', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
             const SizedBox(height: 12),
-            const Text(
-              'Your status log is empty. Transmit your first data packet to the NEX network.',
-              textAlign: TextAlign.center,
-              style:
-                  TextStyle(color: Colors.white38, fontSize: 13, height: 1.5),
-            ),
+            const Text('Share your first update with your contacts and it will appear here.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white38, fontSize: 13, height: 1.5)),
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () => _showAddStatusDialog(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kNeonPurple,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                elevation: 10,
-              ),
-              child: const Text('INITIATE_BROADCAST',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1)),
+              style: ElevatedButton.styleFrom(backgroundColor: kNeonPurple, padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), elevation: 10),
+              child: const Text('Create update', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
             ),
           ],
         ),
@@ -304,20 +305,30 @@ class _MyStatusesScreenState extends State<MyStatusesScreen> {
             navigator.pop();
             messenger.showSnackBar(
               SnackBar(
-                content: const Text('BROADCAST_LIVE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
+                content: const Text('BROADCAST_LIVE',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                        letterSpacing: 1)),
                 backgroundColor: kNeonPurple,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
             );
           } catch (e) {
             if (!mounted) return;
             messenger.showSnackBar(
               SnackBar(
-                content: const Text('TRANSMISSION_ERROR', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
+                content: const Text('TRANSMISSION_ERROR',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                        letterSpacing: 1)),
                 backgroundColor: Colors.redAccent,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
             );
           }
@@ -348,20 +359,30 @@ class _MyStatusesScreenState extends State<MyStatusesScreen> {
             navigator.pop();
             messenger.showSnackBar(
               SnackBar(
-                content: const Text('DATA_MODIFIED', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
+                content: const Text('DATA_MODIFIED',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                        letterSpacing: 1)),
                 backgroundColor: kNeonPurple,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
             );
           } catch (e) {
             if (!mounted) return;
             messenger.showSnackBar(
               SnackBar(
-                content: const Text('REWRITE_FAILED', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
+                content: const Text('REWRITE_FAILED',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                        letterSpacing: 1)),
                 backgroundColor: Colors.redAccent,
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
             );
           }
@@ -374,7 +395,8 @@ class _MyStatusesScreenState extends State<MyStatusesScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => StatusViewerScreen(statusId: statusId, statusData: statusData),
+        builder: (context) =>
+            StatusViewerScreen(statusId: statusId, statusData: statusData),
       ),
     );
   }
@@ -539,10 +561,10 @@ class _MyStatusesScreenState extends State<MyStatusesScreen> {
 
   // Reactive Stream for Status Reactions
   Widget _buildReactionCounter(String statusId) {
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _statusService.getStatusReactions(statusId),
       builder: (context, snapshot) {
-        final count = snapshot.data?.docs.length ?? 0;
+        final count = snapshot.data?.length ?? 0;
         return _buildStatItem(
             Icons.favorite_border_rounded, '$count REACTIONS');
       },

@@ -1,14 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_service.dart';
 
 class SessionService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final SupabaseClient _client = SupabaseService.client;
 
-  String? get currentUserId => _auth.currentUser?.uid;
+  String? get currentUserId => _client.auth.currentUser?.id;
 
-  // Create a new session
   Future<String> createSession({
     required String title,
     required DateTime startTime,
@@ -17,50 +15,51 @@ class SessionService {
     String? gameMode,
     int maxParticipants = 10,
     bool isPublic = true,
-    String? squadId, // Optional: session tied to a squad
-    String? clanId, // Optional: session tied to a clan
+    String? squadId,
+    String? clanId,
   }) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final sessionRef = await _firestore.collection('sessions').add({
+      final response = await _client.from('sessions').insert({
         'title': title,
         'description': description,
         'game': game,
         'gameMode': gameMode,
-        'startTime': startTime,
+        'startTime': startTime.toUtc().toIso8601String(),
         'endTime': null,
         'creatorId': currentUserId,
         'participants': [currentUserId],
         'maxParticipants': maxParticipants,
         'isPublic': isPublic,
-        'status': 'scheduled', // scheduled, active, completed, cancelled
+        'status': 'scheduled',
         'squadId': squadId,
         'clanId': clanId,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
+      }).select().single();
 
-      return sessionRef.id;
+      if (response is Map<String, dynamic>) {
+        return response['id']?.toString() ?? '';
+      }
+      throw Exception('Unable to create session');
     } catch (e) {
       debugPrint('Error creating session: $e');
       rethrow;
     }
   }
 
-  // Join a session
   Future<void> joinSession(String sessionId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final sessionRef = _firestore.collection('sessions').doc(sessionId);
-      final sessionDoc = await sessionRef.get();
+      final session = await _client.from('sessions').select().eq('id', sessionId).maybeSingle();
+      if (session == null || session is! Map<String, dynamic>) {
+        throw Exception('Session not found');
+      }
 
-      if (!sessionDoc.exists) throw Exception('Session not found');
-
-      final sessionData = sessionDoc.data()!;
-      final participants = List<String>.from(sessionData['participants'] ?? []);
-      final maxParticipants = sessionData['maxParticipants'] ?? 10;
-      final status = sessionData['status'];
+      final participants = List<String>.from(session['participants'] ?? []);
+      final maxParticipants = session['maxParticipants'] ?? 10;
+      final status = session['status']?.toString() ?? 'scheduled';
 
       if (status != 'scheduled') {
         throw Exception('Session is not open for joining');
@@ -73,26 +72,24 @@ class SessionService {
       }
 
       participants.add(currentUserId!);
-      await sessionRef.update({'participants': participants});
+      await _client.from('sessions').update({'participants': participants}).eq('id', sessionId);
     } catch (e) {
       debugPrint('Error joining session: $e');
       rethrow;
     }
   }
 
-  // Leave a session
   Future<void> leaveSession(String sessionId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final sessionRef = _firestore.collection('sessions').doc(sessionId);
-      final sessionDoc = await sessionRef.get();
+      final session = await _client.from('sessions').select().eq('id', sessionId).maybeSingle();
+      if (session == null || session is! Map<String, dynamic>) {
+        throw Exception('Session not found');
+      }
 
-      if (!sessionDoc.exists) throw Exception('Session not found');
-
-      final sessionData = sessionDoc.data()!;
-      final participants = List<String>.from(sessionData['participants'] ?? []);
-      final creatorId = sessionData['creatorId'];
+      final participants = List<String>.from(session['participants'] ?? []);
+      final creatorId = session['creatorId']?.toString();
 
       if (!participants.contains(currentUserId)) {
         throw Exception('Not a participant');
@@ -101,22 +98,16 @@ class SessionService {
       participants.remove(currentUserId);
 
       if (participants.isEmpty) {
-        // Cancel session if no participants left
-        await sessionRef.update({
+        await _client.from('sessions').update({
           'participants': participants,
           'status': 'cancelled',
-        });
+        }).eq('id', sessionId);
       } else {
-        // If creator leaves, assign to another participant
-        String newCreatorId = creatorId;
+        String newCreatorId = creatorId ?? participants.first;
         if (currentUserId == creatorId) {
           newCreatorId = participants.first;
         }
-
-        await sessionRef.update({
-          'participants': participants,
-          'creatorId': newCreatorId,
-        });
+        await _client.from('sessions').update({'participants': participants, 'creatorId': newCreatorId}).eq('id', sessionId);
       }
     } catch (e) {
       debugPrint('Error leaving session: $e');
@@ -124,115 +115,138 @@ class SessionService {
     }
   }
 
-  // Start a session
   Future<void> startSession(String sessionId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final sessionRef = _firestore.collection('sessions').doc(sessionId);
-      final sessionDoc = await sessionRef.get();
+      final session = await _client.from('sessions').select().eq('id', sessionId).maybeSingle();
+      if (session == null || session is! Map<String, dynamic>) {
+        throw Exception('Session not found');
+      }
 
-      if (!sessionDoc.exists) throw Exception('Session not found');
-
-      final sessionData = sessionDoc.data()!;
-      final creatorId = sessionData['creatorId'];
-
+      final creatorId = session['creatorId']?.toString();
       if (currentUserId != creatorId) {
         throw Exception('Only creator can start session');
       }
 
-      await sessionRef.update({
+      await _client.from('sessions').update({
         'status': 'active',
-        'startedAt': FieldValue.serverTimestamp(),
-      });
+        'startedAt': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', sessionId);
     } catch (e) {
       debugPrint('Error starting session: $e');
       rethrow;
     }
   }
 
-  // End a session
   Future<void> endSession(String sessionId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final sessionRef = _firestore.collection('sessions').doc(sessionId);
-      final sessionDoc = await sessionRef.get();
+      final session = await _client.from('sessions').select().eq('id', sessionId).maybeSingle();
+      if (session == null || session is! Map<String, dynamic>) {
+        throw Exception('Session not found');
+      }
 
-      if (!sessionDoc.exists) throw Exception('Session not found');
-
-      final sessionData = sessionDoc.data()!;
-      final creatorId = sessionData['creatorId'];
-
+      final creatorId = session['creatorId']?.toString();
       if (currentUserId != creatorId) {
         throw Exception('Only creator can end session');
       }
 
-      await sessionRef.update({
+      await _client.from('sessions').update({
         'status': 'completed',
-        'endedAt': FieldValue.serverTimestamp(),
-      });
+        'endedAt': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', sessionId);
     } catch (e) {
       debugPrint('Error ending session: $e');
       rethrow;
     }
   }
 
-  // Get sessions stream
-  Stream<QuerySnapshot> getSessions({bool publicOnly = false}) {
+  Stream<List<Map<String, dynamic>>> getSessions({bool publicOnly = false}) {
     try {
-      Query query = _firestore.collection('sessions');
+      return Stream<List<Map<String, dynamic>>>.fromFuture(() async {
+        final response = publicOnly
+            ? await _client
+                .from('sessions')
+                .select()
+                .eq('isPublic', true)
+                .inFilter('status', ['scheduled', 'active'])
+                .order('startTime', ascending: true)
+            : await _client
+                .from('sessions')
+                .select()
+                .inFilter('status', ['scheduled', 'active'])
+                .order('startTime', ascending: true);
 
-      if (publicOnly) {
-        query = query.where('isPublic', isEqualTo: true);
-      }
+        if (response is! List) return <Map<String, dynamic>>[];
 
-      return query
-          .where('status', whereIn: ['scheduled', 'active'])
-          .orderBy('startTime')
-          .snapshots()
-          .handleError((e) {
-            debugPrint('Error getting sessions: $e');
-          });
+        return (response as List<dynamic>).map((row) {
+          final data = Map<String, dynamic>.from(row as Map<String, dynamic>);
+          return {
+            'id': data['id']?.toString() ?? '',
+            'title': data['title'] ?? 'Unknown Session',
+            'game': data['game'] ?? 'Unknown Game',
+            'status': data['status'] ?? 'scheduled',
+            'participants': List<String>.from(data['participants'] ?? []),
+            'maxParticipants': data['maxParticipants'] ?? 10,
+            'startTime': data['startTime'],
+            'isPublic': data['isPublic'] ?? true,
+          };
+        }).toList();
+      }()).handleError((e) {debugPrint('Error getting sessions: $e');});
     } catch (e) {
       debugPrint('Error setting up sessions stream: $e');
       rethrow;
     }
   }
 
-  // Get user's sessions
-  Stream<QuerySnapshot> getUserSessions() {
+  Stream<List<Map<String, dynamic>>> getUserSessions() {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      return _firestore
-          .collection('sessions')
-          .where('participants', arrayContains: currentUserId)
-          .orderBy('startTime')
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting user sessions: $e');
-      });
+      return Stream<List<Map<String, dynamic>>>.fromFuture(() async {
+        final response = await _client
+            .from('sessions')
+            .select()
+            .contains('participants', [currentUserId!])
+            .order('startTime', ascending: true);
+
+        if (response is! List) return <Map<String, dynamic>>[];
+
+        return (response as List<dynamic>).map((row) {
+          final data = Map<String, dynamic>.from(row as Map<String, dynamic>);
+          return {
+            'id': data['id']?.toString() ?? '',
+            'title': data['title'] ?? 'Unknown Session',
+            'game': data['game'] ?? 'Unknown Game',
+            'status': data['status'] ?? 'scheduled',
+            'participants': List<String>.from(data['participants'] ?? []),
+            'maxParticipants': data['maxParticipants'] ?? 10,
+            'startTime': data['startTime'],
+            'isPublic': data['isPublic'] ?? true,
+          };
+        }).toList();
+      }()).handleError((e) {debugPrint('Error getting user sessions: $e');});
     } catch (e) {
       debugPrint('Error setting up user sessions stream: $e');
       rethrow;
     }
   }
 
-  // Fetch available public sessions once
   Future<List<Map<String, dynamic>>> fetchPublicSessions() async {
     try {
-      final querySnapshot = await _firestore
-          .collection('sessions')
-          .where('isPublic', isEqualTo: true)
-          .where('status', whereIn: ['scheduled', 'active'])
-          .orderBy('startTime')
-          .get();
+      final response = await _client
+          .from('sessions')
+          .select()
+          .eq('isPublic', true)
+          .inFilter('status', ['scheduled', 'active'])
+          .order('startTime', ascending: true);
 
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
+      return (response as List<dynamic>).map((row) {
+        final data = Map<String, dynamic>.from(row as Map<String, dynamic>);
         return {
-          'id': doc.id,
+          'id': data['id']?.toString() ?? '',
           'title': data['title'] ?? 'Unknown Session',
           'game': data['game'] ?? 'Unknown Game',
           'status': data['status'] ?? 'scheduled',
@@ -247,14 +261,13 @@ class SessionService {
     }
   }
 
-  // Get a single session by ID
   Future<Map<String, dynamic>?> getSessionById(String sessionId) async {
     try {
-      final sessionDoc = await _firestore.collection('sessions').doc(sessionId).get();
-      if (!sessionDoc.exists) return null;
-      final data = sessionDoc.data()!;
+      final response = await _client.from('sessions').select().eq('id', sessionId).maybeSingle();
+      if (response == null) return null;
+      final data = Map<String, dynamic>.from(response as Map<String, dynamic>);
       return {
-        'id': sessionDoc.id,
+        'id': data['id']?.toString() ?? '',
         'title': data['title'] ?? 'Unknown Session',
         'game': data['game'] ?? 'Unknown Game',
         'description': data['description'] ?? '',
@@ -271,53 +284,49 @@ class SessionService {
     }
   }
 
-  // Search public sessions by game title
   Future<List<Map<String, dynamic>>> searchPublicSessions(String query) async {
     try {
       final searchQuery = query.toLowerCase().trim();
-      final querySnapshot = await _firestore
-          .collection('sessions')
-          .where('isPublic', isEqualTo: true)
-          .where('status', whereIn: ['scheduled', 'active'])
-          .orderBy('startTime')
-          .get();
+      final response = await _client
+          .from('sessions')
+          .select()
+          .eq('isPublic', true)
+          .inFilter('status', ['scheduled', 'active'])
+          .order('startTime', ascending: true);
 
-      return querySnapshot.docs
-          .map((doc) {
-            final data = doc.data();
-            return {
-              'id': doc.id,
-              'title': data['title'] ?? 'Unknown Session',
-              'game': data['game'] ?? 'Unknown Game',
-              'status': data['status'] ?? 'scheduled',
-              'participants': List<String>.from(data['participants'] ?? []),
-              'maxParticipants': data['maxParticipants'] ?? 10,
-              'startTime': data['startTime'],
-            };
-          })
-          .where((session) {
-            final title = (session['title'] as String).toLowerCase();
-            final game = (session['game'] as String).toLowerCase();
-            return title.contains(searchQuery) || game.contains(searchQuery);
-          })
-          .toList();
+      final sessions = (response as List<dynamic>).map((row) {
+        final data = Map<String, dynamic>.from(row as Map<String, dynamic>);
+        return {
+          'id': data['id']?.toString() ?? '',
+          'title': data['title'] ?? 'Unknown Session',
+          'game': data['game'] ?? 'Unknown Game',
+          'status': data['status'] ?? 'scheduled',
+          'participants': List<String>.from(data['participants'] ?? []),
+          'maxParticipants': data['maxParticipants'] ?? 10,
+          'startTime': data['startTime'],
+        };
+      }).where((session) {
+        final title = (session['title'] as String).toLowerCase();
+        final game = (session['game'] as String).toLowerCase();
+        return title.contains(searchQuery) || game.contains(searchQuery);
+      }).toList();
+
+      return sessions;
     } catch (e) {
       debugPrint('Error searching public sessions: $e');
       rethrow;
     }
   }
 
-  // Update session metadata
   Future<void> updateSession(String sessionId, Map<String, dynamic> updates) async {
     try {
-      await _firestore.collection('sessions').doc(sessionId).update(updates);
+      await _client.from('sessions').update(updates).eq('id', sessionId);
     } catch (e) {
       debugPrint('Error updating session: $e');
       rethrow;
     }
   }
 
-  // Send message in session
   Future<void> sendSessionMessage({
     required String sessionId,
     required String text,
@@ -326,15 +335,12 @@ class SessionService {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      await _firestore
-          .collection('sessions')
-          .doc(sessionId)
-          .collection('messages')
-          .add({
+      await _client.from('sessionMessages').insert({
+        'sessionId': sessionId,
         'senderId': currentUserId,
         'text': text,
         'type': type,
-        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (e) {
       debugPrint('Error sending session message: $e');
@@ -342,38 +348,35 @@ class SessionService {
     }
   }
 
-  // Get session messages
-  Stream<QuerySnapshot> getSessionMessages(String sessionId) {
+  Stream<List<Map<String, dynamic>>> getSessionMessages(String sessionId) {
     try {
-      return _firestore
-          .collection('sessions')
-          .doc(sessionId)
-          .collection('messages')
-          .orderBy('timestamp', descending: true)
-          .snapshots()
-          .handleError((e) {
-        debugPrint('Error getting session messages: $e');
-      });
+      return _client
+          .from('sessionMessages')
+          .stream(primaryKey: ['id'])
+          .eq('sessionId', sessionId)
+          .order('timestamp', ascending: false)
+          .map((rows) {
+            return rows.map((row) => Map<String, dynamic>.from(row)).toList();
+          })
+          .handleError((e) {debugPrint('Error getting session messages: $e');});
     } catch (e) {
       debugPrint('Error setting up session messages stream: $e');
       rethrow;
     }
   }
 
-  // Add participant to session (for private sessions)
   Future<void> addParticipant(String sessionId, String userId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final sessionRef = _firestore.collection('sessions').doc(sessionId);
-      final sessionDoc = await sessionRef.get();
+      final session = await _client.from('sessions').select().eq('id', sessionId).maybeSingle();
+      if (session == null || session is! Map<String, dynamic>) {
+        throw Exception('Session not found');
+      }
 
-      if (!sessionDoc.exists) throw Exception('Session not found');
-
-      final sessionData = sessionDoc.data()!;
-      final creatorId = sessionData['creatorId'];
-      final participants = List<String>.from(sessionData['participants'] ?? []);
-      final maxParticipants = sessionData['maxParticipants'] ?? 10;
+      final participants = List<String>.from(session['participants'] ?? []);
+      final maxParticipants = session['maxParticipants'] ?? 10;
+      final creatorId = session['creatorId']?.toString();
 
       if (currentUserId != creatorId) {
         throw Exception('Only creator can add participants');
@@ -386,44 +389,40 @@ class SessionService {
       }
 
       participants.add(userId);
-      await sessionRef.update({'participants': participants});
+      await _client.from('sessions').update({'participants': participants}).eq('id', sessionId);
     } catch (e) {
       debugPrint('Error adding participant: $e');
       rethrow;
     }
   }
 
-  // Remove participant from session
   Future<void> removeParticipant(String sessionId, String userId) async {
     try {
       if (currentUserId == null) throw Exception('User not authenticated');
 
-      final sessionRef = _firestore.collection('sessions').doc(sessionId);
-      final sessionDoc = await sessionRef.get();
+      final session = await _client.from('sessions').select().eq('id', sessionId).maybeSingle();
+      if (session == null || session is! Map<String, dynamic>) {
+        throw Exception('Session not found');
+      }
 
-      if (!sessionDoc.exists) throw Exception('Session not found');
-
-      final sessionData = sessionDoc.data()!;
-      final creatorId = sessionData['creatorId'];
-      final participants = List<String>.from(sessionData['participants'] ?? []);
+      final participants = List<String>.from(session['participants'] ?? []);
+      final creatorId = session['creatorId']?.toString();
 
       if (currentUserId != creatorId && currentUserId != userId) {
         throw Exception('Only creator or the participant can remove');
       }
-
       if (!participants.contains(userId)) {
         throw Exception('User is not a participant');
       }
 
       participants.remove(userId);
-
       if (participants.isEmpty) {
-        await sessionRef.update({
+        await _client.from('sessions').update({
           'participants': participants,
           'status': 'cancelled',
-        });
+        }).eq('id', sessionId);
       } else {
-        await sessionRef.update({'participants': participants});
+        await _client.from('sessions').update({'participants': participants}).eq('id', sessionId);
       }
     } catch (e) {
       debugPrint('Error removing participant: $e');

@@ -13,52 +13,57 @@ class VideoFeedScreen extends StatefulWidget {
 
 class _VideoFeedScreenState extends State<VideoFeedScreen> {
   final PageController _pageController = PageController();
-
-  // Mock video data - in production, fetch from Firebase
-  final List<Map<String, dynamic>> videos = [
+  late final List<Map<String, dynamic>> _videos = [
     {
       'id': '1',
       'username': 'alex_creates',
       'avatar': 'A',
-      'description': 'Check out my new beat production! 🎵',
+      'title': 'Studio Drop',
+      'description': 'Fresh beats and a clean new look for the weekend.',
+      'hashtags': '#beats #nexreels',
       'likes': 2540,
       'comments': 324,
       'shares': 156,
       'duration': '0:45',
       'liked': false,
+      'saved': false,
+      'followed': false,
+      'accent': const Color(0xFF8B5CF6),
+      'mediaLabel': 'Music mix',
     },
     {
       'id': '2',
       'username': 'dev_life',
       'avatar': 'D',
-      'description': 'Building NEX-APP in real-time 💻 #Flutter #Development',
+      'title': 'Build in public',
+      'description': 'Shipping the new chat experience and the polished reel feed.',
+      'hashtags': '#flutter #buildinpublic',
       'likes': 5120,
       'comments': 687,
       'shares': 423,
       'duration': '2:15',
       'liked': false,
+      'saved': false,
+      'followed': false,
+      'accent': const Color(0xFF22C55E),
+      'mediaLabel': 'Behind the scenes',
     },
     {
       'id': '3',
       'username': 'gaming_pro',
       'avatar': 'G',
-      'description': 'Insane gaming moments 🎮 New game incoming!',
+      'title': 'Best plays',
+      'description': 'Quick highlights from a late-night session.',
+      'hashtags': '#gaming #reels',
       'likes': 8934,
       'comments': 1203,
       'shares': 567,
       'duration': '1:32',
       'liked': false,
-    },
-    {
-      'id': '4',
-      'username': 'lifestyle_hub',
-      'avatar': 'L',
-      'description': 'Morning routine that changed my life ✨',
-      'likes': 12450,
-      'comments': 2103,
-      'shares': 934,
-      'duration': '3:45',
-      'liked': false,
+      'saved': false,
+      'followed': false,
+      'accent': const Color(0xFF60A5FA),
+      'mediaLabel': 'Gameplay clip',
     },
   ];
 
@@ -68,19 +73,120 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
     super.dispose();
   }
 
+  Future<void> _openCreateReel() async {
+    final result = await Navigator.pushNamed(context, VideoPostScreen.routeName);
+    if (!mounted || result == null) return;
+
+    final reel = Map<String, dynamic>.from(result as Map);
+    setState(() {
+      _videos.insert(0, {
+        ...reel,
+        'likes': 0,
+        'comments': 0,
+        'shares': 0,
+        'liked': false,
+        'saved': false,
+        'followed': false,
+        'accent': reel['accent'] ?? const Color(0xFFB23BFF),
+      });
+    });
+    _pageController.jumpToPage(0);
+  }
+
   void _toggleLike(int index) {
     setState(() {
-      videos[index]['liked'] = !videos[index]['liked'];
-      if (videos[index]['liked']) {
-        videos[index]['likes']++;
+      final liked = _videos[index]['liked'] as bool;
+      _videos[index]['liked'] = !liked;
+      if (!liked) {
+        _videos[index]['likes'] = (_videos[index]['likes'] as int) + 1;
       } else {
-        videos[index]['likes']--;
+        _videos[index]['likes'] = (_videos[index]['likes'] as int) - 1;
       }
     });
   }
 
+  void _toggleSave(int index) {
+    setState(() {
+      _videos[index]['saved'] = !(_videos[index]['saved'] as bool);
+    });
+  }
+
+  void _toggleFollow(int index) {
+    setState(() {
+      _videos[index]['followed'] = !(_videos[index]['followed'] as bool);
+    });
+  }
+
+  void _showCommentSheet(int index) {
+    final controller = TextEditingController();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Leave a comment',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Say something nice...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  final text = controller.text.trim();
+                  if (text.isNotEmpty) {
+                    setState(() => _videos[index]['comments'] = (_videos[index]['comments'] as int) + 1);
+                  }
+                  Navigator.pop(sheetContext);
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(content: Text('Comment posted.')),
+                  );
+                },
+                child: const Text('Post comment'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _shareReel(int index) {
+    final reel = _videos[index];
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Shared ${reel['title']} to your circle.')),
+    );
+    setState(() => _videos[index]['shares'] = (_videos[index]['shares'] as int) + 1);
+  }
+
   void _showAIHelperSheet(BuildContext context) async {
+    final navigator = Navigator.of(context);
     final status = await AIService.instance.getIntegrationStatus();
+    if (!mounted) return;
+    if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
       backgroundColor: kSurfaceColor,
@@ -116,10 +222,11 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
             ElevatedButton.icon(
               onPressed: () async {
                 final response = await AIService.instance.explainReelStyle('Explain how to make NEX-Reels more engaging.');
-                if (mounted) {
-                  Navigator.pop(context);
-                  _showInfoDialog(context, 'Reels Tips', response);
+                if (!mounted || !context.mounted) return;
+                if (navigator.canPop()) {
+                  navigator.pop();
                 }
+                _showInfoDialog(context, 'Reels Tips', response);
               },
               icon: const Icon(Icons.lightbulb_outline),
               label: const Text('AI Reels Tips'),
@@ -129,10 +236,11 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
             ElevatedButton.icon(
               onPressed: () async {
                 final caption = await AIService.instance.generateCaption('Create a remix caption for NEX Reels.');
-                if (mounted) {
-                  Navigator.pop(context);
-                  _showInfoDialog(context, 'AI Caption', caption);
+                if (!mounted || !context.mounted) return;
+                if (navigator.canPop()) {
+                  navigator.pop();
                 }
+                _showInfoDialog(context, 'AI Caption', caption);
               },
               icon: const Icon(Icons.message),
               label: const Text('Generate Caption'),
@@ -163,8 +271,9 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: kDarkBackground,
+      backgroundColor: theme.colorScheme.surface,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -172,277 +281,230 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
         title: const Text('NEX-Reels', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
-          PopupMenuButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (_) => _showAIHelperSheet(context),
             itemBuilder: (context) => [
-              PopupMenuItem(
-                child: const Row(
+              const PopupMenuItem<String>(
+                value: 'search',
+                child: Row(
                   children: [
                     Icon(Icons.search, size: 20),
                     SizedBox(width: 12),
                     Text('Search'),
                   ],
                 ),
-                onTap: () {},
               ),
-              PopupMenuItem(
-                child: const Row(
+              const PopupMenuItem<String>(
+                value: 'ai',
+                child: Row(
                   children: [
                     Icon(Icons.auto_awesome, size: 20),
                     SizedBox(width: 12),
                     Text('AI Helper'),
                   ],
                 ),
-                onTap: () => _showAIHelperSheet(context),
               ),
             ],
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, VideoPostScreen.routeName),
+        onPressed: _openCreateReel,
         backgroundColor: kNeonPurple,
         foregroundColor: Colors.white,
         elevation: 8,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        label: const Text('Create Reels', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const Text('Create Reel', style: TextStyle(fontWeight: FontWeight.bold)),
         icon: const Icon(Icons.video_camera_back),
       ),
       body: PageView.builder(
         controller: _pageController,
         scrollDirection: Axis.vertical,
-        onPageChanged: (index) {
-          // page changed to index
-        },
-        itemCount: videos.length,
+        itemCount: _videos.length,
+        onPageChanged: (index) => setState(() => _videos[index]['playing'] = true),
         itemBuilder: (context, index) {
-          return _buildVideoCard(videos[index], index);
+          return _buildVideoCard(_videos[index], index);
         },
       ),
     );
   }
 
   Widget _buildVideoCard(Map<String, dynamic> video, int index) {
+    final accent = video['accent'] as Color;
     return Stack(
       children: [
-        // Video placeholder with professional gradient
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                kNeonPurple.withValues(alpha: 0.1),
+                const Color(0xFF070B14),
+                accent.withValues(alpha: 0.25),
                 kDarkBackground,
               ],
             ),
           ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [kNeonPurple.withValues(alpha: 0.4), kNeonDarkPurple.withValues(alpha: 0.4)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: kNeonPurple.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: Icon(Icons.videocam, size: 60, color: kNeonPurple.withValues(alpha: 0.8)),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Video ${index + 1}',
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: kNeonPurple.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: kNeonPurple.withValues(alpha: 0.3)),
-                  ),
-                  child: Text(
-                    video['duration'],
-                    style: const TextStyle(color: kNeonPurple, fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
-
-        // Video info and controls
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.8),
-                  Colors.transparent,
-                ],
+        Positioned.fill(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 90, 16, 24),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                gradient: LinearGradient(
+                  colors: [
+                    accent.withValues(alpha: 0.22),
+                    Colors.black.withValues(alpha: 0.28),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // User info
-                Row(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [kNeonPurple, kNeonDarkPurple],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: kNeonPurple.withValues(alpha: 0.4),
-                            blurRadius: 10,
+                    Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(colors: [accent, accent.withValues(alpha: 0.7)]),
                           ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          video['avatar'],
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                          child: Center(
+                            child: Text(
+                              video['avatar'],
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(video['username'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                              Text('${video['duration']} • ${video['mediaLabel']}', style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => _toggleFollow(index),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: video['followed'] ? Colors.white.withValues(alpha: 0.16) : kNeonPurple.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              video['followed'] ? 'Following' : 'Follow',
+                              style: TextStyle(color: video['followed'] ? Colors.white : kNeonPurple, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.28),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(video['title'], style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
                           Text(
-                            video['username'],
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                            video['description'],
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14, height: 1.4),
                           ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: kNeonPurple.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'Follow',
-                              style: TextStyle(color: kNeonPurple, fontSize: 12, fontWeight: FontWeight.w600),
-                            ),
-                          ),
+                          const SizedBox(height: 10),
+                          Text(video['hashtags'], style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
                         ],
                       ),
                     ),
-                    // Three dots menu
-                    PopupMenuButton(
-                      color: kSurfaceColor,
-                      itemBuilder: (BuildContext context) => [
-                        PopupMenuItem(
-                          child: const Text('Report', style: TextStyle(color: Colors.white)),
-                          onTap: () {},
-                        ),
-                        PopupMenuItem(
-                          child: const Text('Share', style: TextStyle(color: Colors.white)),
-                          onTap: () {},
-                        ),
-                        PopupMenuItem(
-                          child: const Text('Save', style: TextStyle(color: Colors.white)),
-                          onTap: () {},
-                        ),
-                      ],
-                      icon: const Icon(Icons.more_vert, color: Colors.white70),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                // Description
-                Text(
-                  video['description'],
-                  style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 16),
-                // Action buttons
-                Row(
-                  children: [
-                    _buildActionButton(
-                      icon: video['liked'] ? Icons.favorite : Icons.favorite_border,
-                      label: _formatCount(video['likes']),
-                      color: video['liked'] ? Colors.red : Colors.white,
-                      onTap: () => _toggleLike(index),
-                    ),
-                    const SizedBox(width: 20),
-                    _buildActionButton(
-                      icon: Icons.comment,
-                      label: _formatCount(video['comments']),
-                      color: Colors.white,
-                      onTap: () {},
-                    ),
-                    const SizedBox(width: 20),
-                    _buildActionButton(
-                      icon: Icons.share,
-                      label: _formatCount(video['shares']),
-                      color: Colors.white,
-                      onTap: () {},
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
+          ),
+        ),
+        Positioned(
+          left: 16,
+          right: 16,
+          top: 24,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.movie_filter, color: Colors.white70, size: 18),
+                    SizedBox(width: 8),
+                    Text('Watch Reels', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Text('${index + 1}/${_videos.length}', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          right: 18,
+          top: 140,
+          child: Column(
+            children: [
+              _buildReelSideButton(icon: video['liked'] ? Icons.favorite : Icons.favorite_border, label: _formatCount(video['likes']), color: video['liked'] ? Colors.redAccent : Colors.white, onTap: () => _toggleLike(index)),
+              const SizedBox(height: 16),
+              _buildReelSideButton(icon: Icons.comment, label: _formatCount(video['comments']), color: Colors.white, onTap: () => _showCommentSheet(index)),
+              const SizedBox(height: 16),
+              _buildReelSideButton(icon: Icons.share, label: _formatCount(video['shares']), color: Colors.white, onTap: () => _shareReel(index)),
+              const SizedBox(height: 16),
+              _buildReelSideButton(icon: video['saved'] ? Icons.bookmark : Icons.bookmark_border, label: 'Save', color: video['saved'] ? kNeonGreen : Colors.white, onTap: () => _toggleSave(index)),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildReelSideButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 50,
-            height: 50,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.black.withValues(alpha: 0.3),
+              color: Colors.black.withValues(alpha: 0.28),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: Icon(icon, color: color, size: 24),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
-          ),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -457,4 +519,3 @@ class _VideoFeedScreenState extends State<VideoFeedScreen> {
     return count.toString();
   }
 }
-
