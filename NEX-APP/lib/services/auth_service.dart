@@ -86,7 +86,7 @@ class AuthService extends ChangeNotifier {
       await _ensureUserDocument(_client.auth.currentUser);
       _lastError = null;
     } on AuthException catch (e) {
-      _lastError = e.message ?? 'Sign in failed';
+      _lastError = e.message;
       throw Exception(_lastError);
     } catch (e) {
       _lastError = e.toString();
@@ -109,13 +109,18 @@ class AuthService extends ChangeNotifier {
       );
 
       final user = response.user;
+      if (user == null) {
+        _lastError = 'Registration successful. Please verify your email before signing in.';
+        throw Exception(_lastError);
+      }
+
       await _createUserDocument(user, referralCode: referralCode);
       if (referralCode != null && referralCode.trim().isNotEmpty) {
-        await _applyReferralCode(referralCode.trim(), user?.id ?? '');
+        await _applyReferralCode(referralCode.trim(), user.id);
       }
       _lastError = null;
     } on AuthException catch (e) {
-      _lastError = e.message ?? 'Sign up failed';
+      _lastError = e.message;
       throw Exception(_lastError);
     } catch (e) {
       _lastError = e.toString();
@@ -160,7 +165,7 @@ class AuthService extends ChangeNotifier {
           .maybeSingle();
       if (query == null) return;
 
-      final referrer = query as Map<String, dynamic>;
+      final Map<String, dynamic> referrer = query;
       await _client.from('users').update({
         'pending_referral_tokens': ((referrer['pending_referral_tokens'] as int?) ?? 0) + 10000,
         'referral_count': ((referrer['referral_count'] as int?) ?? 0) + 1,
@@ -186,7 +191,7 @@ class AuthService extends ChangeNotifier {
           .select()
           .eq('id', user.id)
           .single();
-      final pendingTokens = data?['pending_referral_tokens'] as int? ?? 0;
+      final pendingTokens = (data['pending_referral_tokens'] as int?) ?? 0;
       if (pendingTokens > 0) {
         tokenProvider.addTokens(pendingTokens);
         await _client.from('users').update({'pending_referral_tokens': 0}).eq('id', user.id);
@@ -198,9 +203,9 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<void> _ensureUserDocument(User? user) async {
+  Future<bool> _ensureUserDocument(User? user) async {
     try {
-      if (user == null) return;
+      if (user == null) return false;
       final existing = await _client
           .from('users')
           .select()
@@ -216,10 +221,10 @@ class AuthService extends ChangeNotifier {
           'photo_url': user.userMetadata?['avatar_url'] ?? '',
           'created_at': DateTime.now().toIso8601String(),
         });
-        return;
+        return true;
       }
 
-      final data = existing as Map<String, dynamic>;
+      final Map<String, dynamic> data = existing;
       final updated = <String, dynamic>{};
       if (data['username'] == null || data['username'].toString().isEmpty) {
         updated['username'] = user.userMetadata?['username'] ?? user.email?.split('@').first ?? 'NEX User';
@@ -233,8 +238,10 @@ class AuthService extends ChangeNotifier {
       if (updated.isNotEmpty) {
         await _client.from('users').update(updated).eq('id', user.id);
       }
+      return false;
     } catch (e) {
       debugPrint('Error ensuring user document: $e');
+      return false;
     }
   }
 
@@ -310,7 +317,55 @@ class AuthService extends ChangeNotifier {
       await _client.auth.resetPasswordForEmail(email);
       _lastError = null;
     } on AuthException catch (e) {
-      _lastError = e.message ?? 'Password reset failed';
+      _lastError = e.message;
+      throw Exception(_lastError);
+    } catch (e) {
+      _lastError = e.toString();
+      rethrow;
+    }
+  }
+
+  Future<void> signInWithOAuthProvider(String provider) async {
+    try {
+      await _ensureSupabaseReady();
+
+      switch (provider.toLowerCase()) {
+        case 'google':
+          await _client.auth.signInWithOAuth(
+            OAuthProvider.google,
+            redirectTo: null,
+          );
+          break;
+        case 'github':
+          await _client.auth.signInWithOAuth(
+            OAuthProvider.github,
+            redirectTo: null,
+          );
+          break;
+        case 'discord':
+          await _client.auth.signInWithOAuth(
+            OAuthProvider.discord,
+            redirectTo: null,
+          );
+          break;
+        case 'twitter':
+          await _client.auth.signInWithOAuth(
+            OAuthProvider.twitter,
+            redirectTo: null,
+          );
+          break;
+        case 'instagram':
+        case 'snapchat':
+          throw Exception(
+              'The $provider provider is not currently supported by Supabase OAuth.');
+        default:
+          throw Exception('Unsupported provider: $provider');
+      }
+
+      await _ensureUserDocument(_client.auth.currentUser);
+      _lastError = null;
+    } on AuthException catch (e) {
+      _lastError = e.message;
       throw Exception(_lastError);
     } catch (e) {
       _lastError = e.toString();
@@ -319,20 +374,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signInWithGoogle() async {
-    try {
-      await _ensureSupabaseReady();
-      await _client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: null,
-      );
-      _lastError = null;
-    } on AuthException catch (e) {
-      _lastError = e.message ?? 'Google sign in failed';
-      throw Exception(_lastError);
-    } catch (e) {
-      _lastError = e.toString();
-      rethrow;
-    }
+    return signInWithOAuthProvider('google');
   }
 
   Future<void> signOut() async {

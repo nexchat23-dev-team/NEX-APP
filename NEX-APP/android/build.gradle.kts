@@ -1,12 +1,5 @@
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath("com.google.gms:google-services:4.3.15")
-    }
-}
+import com.android.build.api.dsl.ApplicationExtension
+import com.android.build.api.dsl.LibraryExtension
 
 allprojects {
     repositories {
@@ -27,6 +20,12 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    plugins.withId("com.android.library") {
+        extensions.findByType<LibraryExtension>()?.compileSdk = 36
+    }
+    plugins.withId("com.android.application") {
+        extensions.findByType<ApplicationExtension>()?.compileSdk = 36
+    }
 }
 
 tasks.register<Delete>("clean") {

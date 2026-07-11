@@ -6,6 +6,8 @@ import '../providers/token_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/constants.dart';
 import '../widgets/cyber_background.dart';
+import '../l10n/app_localizations.dart';
+import 'cosmic_animation_screen.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -126,7 +128,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _isSupabaseReady = false;
         errorMessage = _friendlyAuthError(error);
         isLoading = false;
       });
@@ -238,42 +239,42 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-              const SizedBox(height: 16),
-              _buildHeader(),
-              const SizedBox(height: 28),
-              if (!_isSupabaseReady)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.orange.withValues(alpha: 0.25)),
-                  ),
-                  child: const Text(
-                    'Auth is currently unavailable. Please check your Supabase configuration.',
-                    style: TextStyle(color: Colors.orangeAccent, fontSize: 13),
-                  ),
-                ),
-              _buildCredentialFields(),
-              const SizedBox(height: 20),
-              if (errorMessage.isNotEmpty) _buildErrorCard(),
-              _buildSignInButton(),
-              const SizedBox(height: 14),
-              _buildSocialLoginButton(),
-              if (_biometricAvailable && _biometricEnabled) ...[
-                const SizedBox(height: 18),
-                _buildBiometricPrompt(),
-              ],
-              const SizedBox(height: 28),
-              _buildRegisterLink(context),
-            ],
+                  const SizedBox(height: 16),
+                  _buildHeader(),
+                  const SizedBox(height: 28),
+                  if (!_isSupabaseReady)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.25)),
+                      ),
+                      child: const Text(
+                        'Auth is currently unavailable. Please check your Supabase configuration.',
+                        style: TextStyle(color: Colors.orangeAccent, fontSize: 13),
+                      ),
+                    ),
+                  _buildCredentialFields(),
+                  const SizedBox(height: 20),
+                  if (errorMessage.isNotEmpty) _buildErrorCard(),
+                  _buildSignInButton(),
+                  const SizedBox(height: 14),
+                  _buildOAuthButtons(),
+                  if (_biometricAvailable && _biometricEnabled) ...[
+                    const SizedBox(height: 18),
+                    _buildBiometricPrompt(),
+                  ],
+                  const SizedBox(height: 28),
+                  _buildRegisterLink(context),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
-      ],
-    ),
-  );
+    );
   }
 
   Widget _buildHeader() {
@@ -304,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Container(
             width: 50,
             height: 50,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: [kNeonPurple, kNeonBlue],
@@ -315,9 +316,9 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const Icon(Icons.lock_rounded, color: Colors.white, size: 26),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Welcome Back',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).get('welcomeBack'),
+            style: const TextStyle(
               color: kNeonGreen,
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -325,9 +326,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Secure Access',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).get('secureAccess'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -335,9 +336,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Sign in to access your encrypted network and services.',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).get('signInDescription'),
+            style: const TextStyle(
               color: Colors.white60,
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -392,9 +393,9 @@ class _LoginScreenState extends State<LoginScreen> {
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: () => Navigator.pushNamed(context, '/reset-password'),
-            child: const Text('Forgot Password?',
+            child: Text(AppLocalizations.of(context).get('forgotPassword'),
                 style:
-                    TextStyle(color: kNeonBlue, fontWeight: FontWeight.bold)),
+                    const TextStyle(color: kNeonBlue, fontWeight: FontWeight.bold)),
           ),
         ),
       ],
@@ -450,49 +451,152 @@ class _LoginScreenState extends State<LoginScreen> {
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
-                  strokeWidth: 2, color: Colors.white))
-          : const Text('Sign In',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  strokeWidth: 2, color: Colors.white),
+            )
+          : Text(AppLocalizations.of(context).get('signIn'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
     );
   }
 
-  Widget _buildSocialLoginButton() {
-    return OutlinedButton.icon(
-      onPressed: isLoading
-          ? null
-          : () async {
-              setState(() {
-                isLoading = true;
-                errorMessage = '';
-              });
+  Widget _buildOAuthButtons() {
+    final supportedProviders = [
+      {
+        'label': 'Google',
+        'color': kNeonBlue,
+        'icon': Icons.login,
+      },
+      {
+        'label': 'GitHub',
+        'color': Colors.black,
+        'icon': Icons.code,
+      },
+      {
+        'label': 'Discord',
+        'color': const Color(0xFF7289DA),
+        'icon': Icons.chat,
+      },
+      {
+        'label': 'Twitter',
+        'color': const Color(0xFF1DA1F2),
+        'icon': Icons.travel_explore,
+      },
+    ];
 
-              try {
-                final authService =
-                    Provider.of<AuthService>(context, listen: false);
-                final tokenProvider =
-                    Provider.of<TokenProvider>(context, listen: false);
-                await authService.signInWithGoogle();
-                if (!mounted) return;
-                await authService.syncPendingReferralRewards(tokenProvider);
-                if (!tokenProvider.hasTokens) tokenProvider.setBalance(1000000);
-                Navigator.pushReplacementNamed(context, HomeScreen.routeName);
-              } catch (error) {
-                if (!mounted) return;
-                setState(() {
-                  errorMessage = _friendlyAuthError(error);
-                  isLoading = false;
-                });
-              }
-            },
-      icon: const Icon(Icons.login, color: Colors.white),
-      label: const Text('Sign in with Google',
-          style: TextStyle(color: Colors.white)),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: kNeonBlue, width: 2),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    final comingSoonProviders = [
+      {
+        'label': 'Instagram',
+        'color': const Color(0xFFE1306C),
+        'icon': Icons.camera_alt,
+      },
+      {
+        'label': 'Snapchat',
+        'color': const Color(0xFFFFFC00),
+        'icon': Icons.camera,
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: supportedProviders.map((provider) {
+            return _buildOAuthButton(
+              provider['label'] as String,
+              provider['color'] as Color,
+              provider['icon'] as IconData,
+              true,
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'More sign-in options coming soon',
+          style: TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: comingSoonProviders.map((provider) {
+            return _buildOAuthButton(
+              provider['label'] as String,
+              provider['color'] as Color,
+              provider['icon'] as IconData,
+              false,
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOAuthButton(
+    String label,
+    Color color,
+    IconData icon,
+    bool supported,
+  ) {
+    return SizedBox(
+      width: 160,
+      child: OutlinedButton.icon(
+        onPressed: isLoading || !supported
+            ? null
+            : () async {
+                await _handleProviderSignIn(label.toLowerCase());
+              },
+        icon: Icon(
+          icon,
+          color: supported ? Colors.white : Colors.white54,
+        ),
+        label: Text(
+          label,
+          style: TextStyle(
+            color: supported ? Colors.white : Colors.white54,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          backgroundColor:
+              supported ? color.withValues(alpha: 0.18) : Colors.white10,
+          side: BorderSide(
+            color: supported ? color.withValues(alpha: 0.7) : Colors.white12,
+            width: 1.5,
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
       ),
     );
+  }
+
+  Future<void> _handleProviderSignIn(String provider) async {
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+    });
+
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final tokenProvider = Provider.of<TokenProvider>(context, listen: false);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    try {
+      await authService.signInWithOAuthProvider(provider);
+      if (!mounted) return;
+      await authService.syncPendingReferralRewards(tokenProvider);
+      if (!mounted) return;
+      if (!tokenProvider.hasTokens) tokenProvider.setBalance(1000000);
+      Navigator.pushReplacementNamed(context, CosmicLoginAnimationScreen.routeName);
+    } catch (error) {
+      if (!mounted) return;
+      final message = _friendlyAuthError(error);
+      setState(() {
+        errorMessage = message;
+        isLoading = false;
+      });
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 
   Widget _buildBiometricPrompt() {
@@ -534,8 +638,8 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(width: 8),
         TextButton(
           onPressed: () => Navigator.pushNamed(context, '/register'),
-          child: const Text('Create Account',
-              style: TextStyle(color: kNeonGreen, fontWeight: FontWeight.bold)),
+          child: Text(AppLocalizations.of(context).get('createAccount'),
+              style: const TextStyle(color: kNeonGreen, fontWeight: FontWeight.bold)),
         ),
       ],
     );

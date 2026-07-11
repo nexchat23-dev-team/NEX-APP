@@ -28,9 +28,13 @@ import 'screens/my_statuses_screen.dart';
 import 'screens/join_group_screen.dart';
 import 'screens/offline_chat_screen.dart';
 import 'screens/user_search_screen.dart';
+import 'screens/cosmic_animation_screen.dart';
 import 'services/auth_service.dart';
 import 'services/offline_service.dart';
 import 'services/supabase_service.dart';
+import 'providers/locale_provider.dart';
+import 'l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -103,6 +107,7 @@ class NexApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => TokenProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
@@ -117,6 +122,23 @@ class NexApp extends StatelessWidget {
             theme: themeProvider.getLightThemeData(),
             darkTheme: themeProvider.getDarkThemeData(),
             themeMode: mode,
+            locale: Provider.of<LocaleProvider>(context).locale,
+            supportedLocales: LocaleProvider.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizationsDelegate(),
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            localeResolutionCallback: (locale, supportedLocales) {
+              if (locale == null) return supportedLocales.first;
+              for (var supportedLocale in supportedLocales) {
+                if (supportedLocale.languageCode == locale.languageCode) {
+                  return supportedLocale;
+                }
+              }
+              return supportedLocales.first;
+            },
             home: const SplashScreen(),
             routes: {
               LoginScreen.routeName: (_) => const LoginScreen(),
@@ -141,6 +163,7 @@ class NexApp extends StatelessWidget {
               JoinGroupScreen.routeName: (_) => const JoinGroupScreen(),
               OfflineChatScreen.routeName: (_) => const OfflineChatScreen(),
               UserSearchScreen.routeName: (_) => const UserSearchScreen(),
+              CosmicLoginAnimationScreen.routeName: (_) => const CosmicLoginAnimationScreen(),
             },
           );
         },

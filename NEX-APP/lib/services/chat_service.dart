@@ -102,6 +102,7 @@ class ChatService {
         .from('messages')
         .stream(primaryKey: ['id'])
         .eq('conversation_id', conversationId)
+        .order('created_at', ascending: true)
         .map((rows) {
           final normalized = rows
               .map((row) => _normalizeMessage(Map<String, dynamic>.from(row)))
@@ -109,7 +110,7 @@ class ChatService {
           normalized.sort((a, b) {
             final aTime = a['timestamp']?.toString() ?? '';
             final bTime = b['timestamp']?.toString() ?? '';
-            return bTime.compareTo(aTime);
+            return aTime.compareTo(bTime);
           });
           return normalized;
         });
@@ -156,7 +157,11 @@ class ChatService {
       throw Exception('No current user');
     }
 
-    final rows = await _client.from('conversations').select();
+    final rows = await _client
+        .from('conversations')
+        .select()
+        .or('participants.cs.{${currentUserId!},${otherUserId}}');
+
     for (final row in rows) {
       final participants = List<String>.from(row['participants'] ?? []);
       if (participants.length == 2 && participants.contains(currentUserId) && participants.contains(otherUserId)) {

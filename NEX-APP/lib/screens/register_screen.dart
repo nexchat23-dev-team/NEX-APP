@@ -4,7 +4,7 @@ import '../services/auth_service.dart';
 import '../providers/token_provider.dart';
 import '../utils/constants.dart';
 import '../widgets/cyber_background.dart';
-import 'home_screen.dart';
+import 'cosmic_animation_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   static const routeName = '/register';
@@ -73,7 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       tokenProvider.setBalance(startingBalance);
 
       if (!mounted) return; // FIX: Essential for stability after await
-      Navigator.pushReplacementNamed(context, HomeScreen.routeName);
+      Navigator.pushReplacementNamed(context, CosmicLoginAnimationScreen.routeName);
     } catch (error) {
       if (!mounted) return;
       setState(() {

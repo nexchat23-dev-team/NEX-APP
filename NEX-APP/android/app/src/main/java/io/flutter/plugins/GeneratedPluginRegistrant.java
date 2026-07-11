@@ -16,19 +16,24 @@ public final class GeneratedPluginRegistrant {
   private static final String TAG = "GeneratedPluginRegistrant";
   public static void registerWith(@NonNull FlutterEngine flutterEngine) {
     try {
+      flutterEngine.getPlugins().add(new com.llfbandit.app_links.AppLinksPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin app_links, com.llfbandit.app_links.AppLinksPlugin", e);
+    }
+    try {
       flutterEngine.getPlugins().add(new io.flutter.plugins.firebase.firestore.FlutterFirebaseFirestorePlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin cloud_firestore, io.flutter.plugins.firebase.firestore.FlutterFirebaseFirestorePlugin", e);
     }
     try {
+      flutterEngine.getPlugins().add(new dev.fluttercommunity.plus.connectivity.ConnectivityPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin connectivity_plus, dev.fluttercommunity.plus.connectivity.ConnectivityPlugin", e);
+    }
+    try {
       flutterEngine.getPlugins().add(new com.mr.flutter.plugin.filepicker.FilePickerPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin file_picker, com.mr.flutter.plugin.filepicker.FilePickerPlugin", e);
-    }
-    try {
-      flutterEngine.getPlugins().add(new io.flutter.plugins.firebase.auth.FlutterFirebaseAuthPlugin());
-    } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin firebase_auth, io.flutter.plugins.firebase.auth.FlutterFirebaseAuthPlugin", e);
     }
     try {
       flutterEngine.getPlugins().add(new io.flutter.plugins.firebase.core.FlutterFirebaseCorePlugin());
@@ -46,6 +51,21 @@ public final class GeneratedPluginRegistrant {
       Log.e(TAG, "Error registering plugin flutter_plugin_android_lifecycle, io.flutter.plugins.flutter_plugin_android_lifecycle.FlutterAndroidLifecyclePlugin", e);
     }
     try {
+      flutterEngine.getPlugins().add(new com.it_nomads.fluttersecurestorage.FlutterSecureStoragePlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin flutter_secure_storage, com.it_nomads.fluttersecurestorage.FlutterSecureStoragePlugin", e);
+    }
+    try {
+      flutterEngine.getPlugins().add(new xyz.canardoux.fluttersound.FlutterSound());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin flutter_sound, xyz.canardoux.fluttersound.FlutterSound", e);
+    }
+    try {
+      flutterEngine.getPlugins().add(new com.cloudwebrtc.webrtc.FlutterWebRTCPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin flutter_webrtc, com.cloudwebrtc.webrtc.FlutterWebRTCPlugin", e);
+    }
+    try {
       flutterEngine.getPlugins().add(new io.flutter.plugins.googlesignin.GoogleSignInPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin google_sign_in_android, io.flutter.plugins.googlesignin.GoogleSignInPlugin", e);
@@ -61,6 +81,11 @@ public final class GeneratedPluginRegistrant {
       Log.e(TAG, "Error registering plugin jni_flutter, com.github.dart_lang.jni_flutter.JniFlutterPlugin", e);
     }
     try {
+      flutterEngine.getPlugins().add(new io.flutter.plugins.localauth.LocalAuthPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin local_auth_android, io.flutter.plugins.localauth.LocalAuthPlugin", e);
+    }
+    try {
       flutterEngine.getPlugins().add(new com.pkmnapps.nearby_connections.NearbyConnectionsPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin nearby_connections, com.pkmnapps.nearby_connections.NearbyConnectionsPlugin", e);
@@ -74,6 +99,16 @@ public final class GeneratedPluginRegistrant {
       flutterEngine.getPlugins().add(new io.flutter.plugins.sharedpreferences.SharedPreferencesPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin shared_preferences_android, io.flutter.plugins.sharedpreferences.SharedPreferencesPlugin", e);
+    }
+    try {
+      flutterEngine.getPlugins().add(new io.flutter.plugins.urllauncher.UrlLauncherPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin url_launcher_android, io.flutter.plugins.urllauncher.UrlLauncherPlugin", e);
+    }
+    try {
+      flutterEngine.getPlugins().add(new dev.fluttercommunity.workmanager.WorkmanagerPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin workmanager_android, dev.fluttercommunity.workmanager.WorkmanagerPlugin", e);
     }
   }
 }

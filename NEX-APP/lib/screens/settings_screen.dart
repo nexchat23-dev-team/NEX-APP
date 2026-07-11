@@ -4,9 +4,11 @@ import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'permission_screen.dart';
+import '../providers/locale_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/token_provider.dart';
 import '../services/auth_service.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/constants.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -30,7 +32,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _lowDataModeEnabled = false;
   bool _useNexRingtone = false;
   int _nexRingtoneIndex = 0;
-  String _selectedLanguage = 'English';
   String _startupScreen = 'Home';
   late final TextEditingController _recipientController;
   late final TextEditingController _transferAmountController;
@@ -439,8 +440,8 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
               _buildSettingsTile(
                 icon: Icons.language,
-                title: 'Language',
-                subtitle: _selectedLanguage,
+                title: AppLocalizations.of(context).get('language'),
+                subtitle: Provider.of<LocaleProvider>(context).languageName,
                 onTap: () => _showLanguageDialog(context),
               ),
 
@@ -836,31 +837,32 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   void _showLanguageDialog(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context, listen: false);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: kSurfaceColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.language, color: kNeonBlue),
-            SizedBox(width: 12),
-            Text('Select Language',
-                style: TextStyle(
+            const Icon(Icons.language, color: kNeonBlue),
+            const SizedBox(width: 12),
+            Text(AppLocalizations.of(context).get('selectLanguage'),
+                style: const TextStyle(
                     color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children:
-              ['English', 'Spanish', 'French', 'German', 'Arabic'].map((lang) {
+          children: LocaleProvider.supportedLocales.map((locale) {
+            final label = LocaleProvider.languageNameForCode(locale.languageCode);
             return ListTile(
-              title: Text(lang, style: const TextStyle(color: Colors.white)),
-              trailing: _selectedLanguage == lang
+              title: Text(label, style: const TextStyle(color: Colors.white)),
+              trailing: localeProvider.locale.languageCode == locale.languageCode
                   ? const Icon(Icons.check, color: kNeonGreen)
                   : null,
-              onTap: () {
-                setState(() => _selectedLanguage = lang);
+              onTap: () async {
+                await localeProvider.setLocale(locale);
                 Navigator.pop(context);
               },
             );
@@ -869,6 +871,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       ),
     );
   }
+
 
   void _showRingtoneDialog(BuildContext context) {
     showDialog(
